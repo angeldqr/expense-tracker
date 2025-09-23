@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <div id="auth-view">
+        <div class="stars">
+            <div class="star"></div><div class="star"></div><div class="star"></div><div class="star"></div><div class="star"></div>
+        </div>
+        <main class="container" id="container">
+            <section class="form-container sign-up">
+                <form id="registerForm" novalidate>
+                    <h1>Crear cuenta</h1>
+                    <div class="social-icons"><a href="#" class="icon" aria-label="Regístrate con Google"><i class="fa-brands fa-google-plus-g"></i></a><a href="#" class="icon" aria-label="Regístrate con Facebook"><i class="fa-brands fa-facebook-f"></i></a></div>
+                    <p>O usa tu email para registrarte</p>
+                    <div class="input-container"><input type="text" id="registerName" name="name" placeholder=" " required autocomplete="name"><label for="registerName">Nombre</label></div>
+                    <div class="input-container"><input type="email" id="registerEmail" name="email" placeholder=" " required autocomplete="email"><label for="registerEmail">Email</label></div>
+                    <div class="input-container"><input type="password" id="registerPassword" name="password" placeholder=" " required minlength="8" autocomplete="new-password"><label for="registerPassword">Contraseña</label></div>
+                    <button type="submit">Crear cuenta</button>
+                </form>
+            </section>
+            <section class="form-container sign-in">
+                <form id="loginForm" novalidate>
+                    <h1>Iniciar sesión</h1>
+                    <div class="social-icons"><a href="#" class="icon" aria-label="Inicia sesión con Google"><i class="fa-brands fa-google-plus-g"></i></a><a href="#" class="icon" aria-label="Inicia sesión con Facebook"><i class="fa-brands fa-facebook-f"></i></a></div>
+                    <p>O usa tu email y contraseña</p>
+                    <div class="input-container"><input type="email" id="loginEmail" name="email" placeholder=" " required autocomplete="email"><label for="loginEmail">Email</label></div>
+                    <div class="input-container"><input type="password" id="loginPassword" name="password" placeholder=" " required autocomplete="current-password"><label for="loginPassword">Contraseña</label></div>
+                    <a href="#">¿Olvidaste tu contraseña?</a>
+                    <button type="submit">Iniciar sesión</button>
+                </form>
+            </section>
+            <div class="toggle-container">
+                <div class="toggle">
+                    <div class="toggle-panel toggle-left">
+                        <h1>¡Bienvenido de nuevo!</h1>
+                        <p>Si ya tienes una cuenta, inicia sesión para acceder a todas las funciones.</p>
+                        <button class="hidden" id="login" type="button">Iniciar Sesión</button>
+                    </div>
+                    <div class="toggle-panel toggle-right">
+                        <h1>¿Eres nuevo?</h1>
+                        <p>Crea una cuenta para empezar a registrar tus gastos e ingresos.</p>
+                        <button class="hidden" id="register" type="button">Regístrate</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="dashboard-view" style="display: none;">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h3>Menú</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="#" data-view="view-transactions-list" class="menu-item active"><i class="fas fa-list-ul"></i><span>Transacciones</span></a></li>
+                <li><a href="#" data-view="view-add-transaction" class="menu-item"><i class="fas fa-plus-circle"></i><span>Añadir Transacción</span></a></li>
+                <li><a href="#" data-view="view-manage-categories" class="menu-item"><i class="fas fa-tags"></i><span>Categorías</span></a></li>
+            </ul>
+            <div class="sidebar-footer">
+                 <button id="logout-button">Cerrar Sesión</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div id="view-transactions-list" class="view">
+                <h2>Transacciones Recientes</h2>
+                <div id="transactions-list"></div>
+            </div>
+
+            <div id="view-add-transaction" class="view" style="display: none;">
+                <section class="dashboard-form-container">
+                    <h2>Nueva Transacción</h2>
+                    <form id="transaction-form">
+                        <div class="form-group"><label for="description">Descripción</label><input type="text" id="description" required></div>
+                        <div class="form-group"><label for="amount">Monto</label><input type="number" id="amount" step="0.01" required></div>
+                        <div class="form-group"><label for="type">Tipo</label><select id="type" required><option value="expense">Gasto</option><option value="income">Ingreso</option></select></div>
+                        <div class="form-group"><label for="category">Categoría</label><select id="category" required></select></div>
+                        <button type="submit">Añadir Transacción</button>
+                    </form>
+                </section>
+            </div>
+
+            <div id="view-manage-categories" class="view" style="display: none;">
+                <section class="dashboard-form-container">
+                    <h2>Gestionar Categorías</h2>
+                    <form id="category-form">
+                        <div class="form-group">
+                            <label for="category-name">Nombre de Nueva Categoría</label>
+                            <input type="text" id="category-name" placeholder="Ej: Ocio" required>
+                        </div>
+                        <button type="submit">Crear Categoría</button>
+                    </form>
+                    <div id="category-list" style="margin-top: 2rem;">
+                        </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+</body>
+</html>
