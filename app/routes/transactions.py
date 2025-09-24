@@ -32,7 +32,9 @@ def get_transactions():
 @jwt_required()
 def create_transaction():
     """Crea una nueva transacción para el usuario logueado."""
-    current_user_id = get_jwt_identity()
+    # --- LA CORRECCIÓN ESTÁ AQUÍ ---
+    # Convertimos la identidad del token (que es un string) a un entero.
+    current_user_id = int(get_jwt_identity())
     data = request.get_json()
 
     if not data or not all(k in data for k in ['description', 'amount', 'type', 'category_id']):
@@ -47,7 +49,8 @@ def create_transaction():
     except (ValueError, TypeError):
         return jsonify({"error": "El monto debe ser un número positivo"}), 400
 
-    category = Category.query.filter_by(id=data['category_id'], user_id=current_user_id).first()
+    category_id = int(data.get('category_id'))
+    category = Category.query.filter_by(id=category_id, user_id=current_user_id).first()
     if not category:
         return jsonify({"error": "La categoría no existe o no te pertenece"}), 404
     
@@ -55,7 +58,7 @@ def create_transaction():
         description=data['description'],
         amount=amount,
         type=data['type'],
-        category_id=data['category_id'],
+        category_id=category.id,
         user_id=current_user_id
     )
     db.session.add(new_transaction)
@@ -70,7 +73,7 @@ def create_transaction():
 @jwt_required()
 def get_transaction(transaction_id):
     """Obtiene los detalles de una transacción específica."""
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     transaction = Transaction.query.filter_by(id=transaction_id, user_id=current_user_id).first()
     
     if not transaction:
@@ -89,7 +92,7 @@ def get_transaction(transaction_id):
 @jwt_required()
 def update_transaction(transaction_id):
     """Actualiza una transacción existente."""
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     transaction = Transaction.query.filter_by(id=transaction_id, user_id=current_user_id).first()
 
     if not transaction:
@@ -108,7 +111,7 @@ def update_transaction(transaction_id):
 @jwt_required()
 def delete_transaction(transaction_id):
     """Elimina una transacción existente."""
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     transaction = Transaction.query.filter_by(id=transaction_id, user_id=current_user_id).first()
     
     if not transaction:
