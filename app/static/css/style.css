@@ -1255,3 +1255,27 @@ a:focus-visible {
         --line-clr: #666666;
     }
 }
+
+/* --- ESTILO PARA EL LAYOUT DE DOS FORMULARIOS --- */
+
+.form-grid-container {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* La columna de transacción será el doble de ancha */
+    gap: 2rem;
+    align-items: start; /* Alinea los contenedores en la parte superior */
+}
+
+/* --- ESTILO PARA EL LAYOUT DE VISTA UNIFICADA --- */
+
+.form-grid-container {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr; /* Columna de transacción más ancha */
+    gap: 2rem;
+    align-items: start;
+}
+
+.right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem; /* Espacio entre el formulario y la lista de categorías */
+}

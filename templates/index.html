@@ -59,12 +59,21 @@
                 <h3>Menú</h3>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="#" data-view="view-transactions-list" class="menu-item active"><i class="fas fa-list-ul"></i><span>Transacciones</span></a></li>
-                <li><a href="#" data-view="view-add-transaction" class="menu-item"><i class="fas fa-plus-circle"></i><span>Añadir Transacción</span></a></li>
-                <li><a href="#" data-view="view-manage-categories" class="menu-item"><i class="fas fa-tags"></i><span>Categorías</span></a></li>
-            </ul>
+                <li>
+                    <a href="#" data-view="view-transactions-list" class="menu-item active">
+                        <i class="fas fa-list-ul"></i>
+                        <span>Transacciones</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-view="view-add-unified" class="menu-item">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Añadir</span>
+                    </a>
+                </li>
+                </ul>
             <div class="sidebar-footer">
-                 <button id="logout-button">Cerrar Sesión</button>
+                <button id="logout-button">Cerrar Sesión</button>
             </div>
         </nav>
 
@@ -74,32 +83,36 @@
                 <div id="transactions-list"></div>
             </div>
 
-            <div id="view-add-transaction" class="view" style="display: none;">
-                <section class="dashboard-form-container">
-                    <h2>Nueva Transacción</h2>
-                    <form id="transaction-form">
-                        <div class="form-group"><label for="description">Descripción</label><input type="text" id="description" required></div>
-                        <div class="form-group"><label for="amount">Monto</label><input type="number" id="amount" step="0.01" required></div>
-                        <div class="form-group"><label for="type">Tipo</label><select id="type" required><option value="expense">Gasto</option><option value="income">Ingreso</option></select></div>
-                        <div class="form-group"><label for="category">Categoría</label><select id="category" required></select></div>
-                        <button type="submit">Añadir Transacción</button>
-                    </form>
-                </section>
-            </div>
+            <div id="view-add-unified" class="view" style="display: none;">
+                <div class="form-grid-container">
+                    <section class="dashboard-form-container">
+                        <h2>Nueva Transacción</h2>
+                        <form id="transaction-form">
+                            <div class="form-group"><label for="description">Descripción</label><input type="text" id="description" required></div>
+                            <div class="form-group"><label for="amount">Monto</label><input type="number" id="amount" step="0.01" required></div>
+                            <div class="form-group"><label for="type">Tipo</label><select id="type" required><option value="expense">Gasto</option><option value="income">Ingreso</option></select></div>
+                            <div class="form-group"><label for="category">Categoría</label><select id="category" required></select></div>
+                            <button type="submit">Añadir Transacción</button>
+                        </form>
+                    </section>
 
-            <div id="view-manage-categories" class="view" style="display: none;">
-                <section class="dashboard-form-container">
-                    <h2>Gestionar Categorías</h2>
-                    <form id="category-form">
-                        <div class="form-group">
-                            <label for="category-name">Nombre de Nueva Categoría</label>
-                            <input type="text" id="category-name" placeholder="Ej: Ocio" required>
-                        </div>
-                        <button type="submit">Crear Categoría</button>
-                    </form>
-                    <div id="category-list" style="margin-top: 2rem;">
-                        </div>
-                </section>
+                    <div class="right-column">
+                        <section class="dashboard-form-container">
+                            <h2>Nueva Categoría</h2>
+                            <form id="category-form">
+                                <div class="form-group">
+                                    <label for="category-name">Nombre</label>
+                                    <input type="text" id="category-name" placeholder="Ej: Ocio" required>
+                                </div>
+                                <button type="submit">Crear Categoría</button>
+                            </form>
+                        </section>
+                        <section class="dashboard-data-container">
+                            <h2>Mis Categorías</h2>
+                            <div id="category-list"></div>
+                        </section>
+                    </div>
+                </div>
             </div>
         </main>
     </div>

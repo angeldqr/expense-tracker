@@ -513,7 +513,7 @@
                             ${transactions.map(t => `
                                 <tr data-id="${t.id}">
                                     <td>${t.description}</td>
-                                    <td class="amount ${t.type === 'income' ? 'income' : 'expense'}">${t.type === 'income' ? '+' : '-'}$${parseFloat(t.amount).toFixed(2)}</td>
+                                    <td class="amount ${t.type === 'income' ? 'income' : 'expense'}">${t.type === 'income' ? '+' : '-'}$${parseFloat(t.amount).toLocaleString('es-CO', {minimumFractionDigits: 0, maximumFractionDigits: 0})} COP</td>
                                     <td>
                                         <span class="type-tag type-${t.type}">
                                             ${t.type === 'income' ? 'Ingreso' : 'Gasto'}
@@ -965,4 +965,4 @@
         • Código Konami: ↑↑↓↓←→←→BA (efectos especiales)
         `);
     });
-})();
+})()
