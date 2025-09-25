@@ -792,7 +792,13 @@
                         editingTransactionId = id;
                         
                         animationSystem.addMicroBounce(target);
-                        document.querySelector('.menu-item[data-view="view-add-transaction"]').click();
+                        
+                        // Buscar el elemento del menú correcto según el HTML
+                        const addTransactionMenuItem = document.querySelector('.menu-item[data-view="view-add-unified"]');
+                        
+                        if (addTransactionMenuItem) {
+                            addTransactionMenuItem.click();
+                        }
                     } catch (error) {
                         showNotification(error.message, 'error');
                     } finally {
@@ -941,16 +947,19 @@
                 switch(e.key) {
                     case 'n': // Ctrl+N para nueva transacción
                         e.preventDefault();
-                        document.querySelector('.menu-item[data-view="view-add-transaction"]').click();
-                        setTimeout(() => document.getElementById('description').focus(), 100);
+                        const addTransactionMenuItem = document.querySelector('.menu-item[data-view="view-add-unified"]');
+                        if (addTransactionMenuItem) {
+                            addTransactionMenuItem.click();
+                        }
+                        setTimeout(() => {
+                            const descInput = document.getElementById('description');
+                            if (descInput) descInput.focus();
+                        }, 100);
                         break;
                     case 'l': // Ctrl+L para ver lista
                         e.preventDefault();
-                        document.querySelector('.menu-item[data-view="view-transactions-list"]').click();
-                        break;
-                    case 'c': // Ctrl+C para categorías
-                        e.preventDefault();
-                        document.querySelector('.menu-item[data-view="view-manage-categories"]').click();
+                        const listMenuItem = document.querySelector('.menu-item[data-view="view-transactions-list"]');
+                        if (listMenuItem) listMenuItem.click();
                         break;
                 }
             }
@@ -959,9 +968,8 @@
         // Mostrar shortcuts en consola para desarrollo
         console.log(`
         🚀 Expense Tracker - Atajos de teclado:
-        • Ctrl+N: Nueva transacción
+        • Ctrl+N: Nueva transacción/categoría
         • Ctrl+L: Lista de transacciones  
-        • Ctrl+C: Gestionar categorías
         • Código Konami: ↑↑↓↓←→←→BA (efectos especiales)
         `);
     });
