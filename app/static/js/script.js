@@ -238,7 +238,7 @@
         const editCategorySubmitBtn = document.getElementById('edit-category-submit');
         const editCategoryIdInput = document.getElementById('edit-category-id');
 
-        // --- Paginación ---
+        // --- Paginación de transacciones ---
         let currentPage = 1;
         const itemsPerPage = 5;
 
@@ -270,6 +270,43 @@
                     if (currentPage < totalPages) {
                         currentPage++;
                         renderPaginatedTransactions(transactions);
+                    }
+                });
+            }
+        };
+
+        // --- Paginación de categorías ---
+        let currentCategoryPage = 1;
+        const categoryItemsPerPage = 5;
+
+        const renderPaginatedCategories = (categories) => {
+            const totalPages = Math.ceil(categories.length / categoryItemsPerPage);
+            const startIndex = (currentCategoryPage - 1) * categoryItemsPerPage;
+            const endIndex = startIndex + categoryItemsPerPage;
+            const pageCategories = categories.slice(startIndex, endIndex);
+
+            renderCategoryList(pageCategories);
+
+            // Mostrar controles de paginación
+            const paginationContainer = document.getElementById('category-pagination-controls');
+            if (paginationContainer) {
+                paginationContainer.innerHTML = `
+                    <button id="prev-category-page" ${currentCategoryPage === 1 ? 'disabled' : ''}>ANTERIOR</button>
+                    <span>Página ${currentCategoryPage} de ${totalPages}</span>
+                    <button id="next-category-page" ${currentCategoryPage === totalPages ? 'disabled' : ''}>SIGUIENTE</button>
+                `;
+
+                document.getElementById('prev-category-page')?.addEventListener('click', () => {
+                    if (currentCategoryPage > 1) {
+                        currentCategoryPage--;
+                        renderPaginatedCategories(categories);
+                    }
+                });
+
+                document.getElementById('next-category-page')?.addEventListener('click', () => {
+                    if (currentCategoryPage < totalPages) {
+                        currentCategoryPage++;
+                        renderPaginatedCategories(categories);
                     }
                 });
             }
@@ -351,7 +388,7 @@
             try {
                 const [categories, transactions] = await Promise.all([api.getCategories(), api.getTransactions()]);
                 renderCategoriesForSelect(categories);
-                renderCategoryList(categories);
+                renderPaginatedCategories(categories); // <-- Paginado funcional
                 renderPaginatedTransactions(transactions); // <-- Paginado funcional
             } catch (error) {
                 showNotification(error.message, 'error');
