@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import Transaction, Category
 from app import db
+from sqlalchemy.orm import joinedload
 
 transactions_bp = Blueprint('transactions', __name__, url_prefix='/transactions')
 
@@ -14,16 +15,22 @@ transactions_bp = Blueprint('transactions', __name__, url_prefix='/transactions'
 def get_transactions():
     """Obtiene una lista de todas las transacciones del usuario logueado."""
     current_user_id = get_jwt_identity()
-    user_transactions = Transaction.query.filter_by(user_id=current_user_id).order_by(Transaction.date.desc()).all()
+    
+    # Carga las transacciones con su categoría asociada
+    user_transactions = Transaction.query.filter_by(user_id=current_user_id).options(
+        joinedload(Transaction.category)
+    ).order_by(Transaction.date.desc()).all()
     
     result = []
     for t in user_transactions:
+        category_name = t.category.name if t.category else 'Sin categoría'
         result.append({
             'id': t.id,
             'description': t.description,
             'amount': str(t.amount),
             'type': t.type,
             'category_id': t.category_id,
+            'category_name': category_name,  # <-- ¡Agregado!
             'date': t.date.isoformat()
         })
     return jsonify(result)
@@ -79,12 +86,15 @@ def get_transaction(transaction_id):
     if not transaction:
         return jsonify({"error": "Transacción no encontrada"}), 404
     
+    category_name = transaction.category.name if transaction.category else 'Sin categoría'
+    
     return jsonify({
         'id': transaction.id,
         'description': transaction.description,
         'amount': str(transaction.amount),
         'type': transaction.type,
         'category_id': transaction.category_id,
+        'category_name': category_name,  # <-- ¡Agregado!
         'date': transaction.date.isoformat()
     })
 

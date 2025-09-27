@@ -32,4 +32,4 @@ class Transaction(db.Model):
     date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
-    category = db.relationship('Category', backref='transactions', lazy=True)
+    category = db.relationship('Category', backref='transactions', lazy='joined')  # <-- Cambiado a 'joined'

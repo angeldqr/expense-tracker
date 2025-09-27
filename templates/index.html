@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expense Tracker</title>
+    
+    <!-- Carga de fuentes desde Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -84,10 +90,10 @@
             <div id="view-transactions-list" class="view">
                 <h2>Transacciones Recientes</h2>
                 <div id="transactions-list"></div>
+                <div id="pagination-controls" class="pagination-controls"></div>
             </div>
 
-            <!-- Vista Unificada para Añadir (Ahora con el nuevo layout) -->
-            <!-- CORRECCIÓN: Se eliminó el `style="display: none;"` que causaba el problema -->
+            <!-- Vista Unificada para Añadir -->
             <div id="view-add-unified" class="view">
                 <div class="form-grid-container">
                     <!-- Columna Izquierda: Formulario de Transacción -->
@@ -132,6 +138,24 @@
                         <input type="text" id="category-name" placeholder="Ej: Ocio" required>
                     </div>
                     <button type="submit">Crear Categoría</button>
+                </form>
+            </section>
+        </div>
+    </div>
+
+    <!-- Modal para editar una categoría -->
+    <div id="edit-category-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button id="close-edit-category-modal" class="close-button" aria-label="Cerrar modal">&times;</button>
+            <section class="dashboard-form-container">
+                <h2>Editar Categoría</h2>
+                <form id="edit-category-form">
+                    <input type="hidden" id="edit-category-id">
+                    <div class="form-group">
+                        <label for="edit-category-name">Nombre</label>
+                        <input type="text" id="edit-category-name" placeholder="Ej: Ocio" required>
+                    </div>
+                    <button type="button" id="edit-category-submit">Guardar Cambios</button>
                 </form>
             </section>
         </div>

@@ -81,7 +81,7 @@
                 @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
                 .skeleton-row { height: 60px; margin: 8px 0; display: flex; align-items: center; gap: 1rem; }
                 .skeleton-cell { height: 20px; border-radius: 4px; }
-                .skeleton-cell:nth-child(1) { width: 30%; } .skeleton-cell:nth-child(2) { width: 20%; } .skeleton-cell:nth-child(3) { width: 15%; } .skeleton-cell:nth-child(4) { width: 25%; }
+                .skeleton-cell:nth-child(1) { width: 15%; } .skeleton-cell:nth-child(2) { width: 30%; } .skeleton-cell:nth-child(3) { width: 20%; } .skeleton-cell:nth-child(4) { width: 15%; } .skeleton-cell:nth-child(5) { width: 20%; }
                 .view { transition: opacity 0.3s, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
                 .view.hidden { position: absolute; opacity: 0; transform: translateX(20px); pointer-events: none; }
                 .micro-bounce { animation: micro-bounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
@@ -191,7 +191,7 @@
     // =================================================================
     // FUNCIONES DE LOADING SKELETON
     // =================================================================
-    const showSkeletonLoader = (container, rows = 5, cells = 4) => {
+    const showSkeletonLoader = (container, rows = 5, cells = 5) => {
         container.innerHTML = '';
         for (let i = 0; i < rows; i++) {
             const skeletonRow = document.createElement('div');
@@ -232,7 +232,48 @@
         const addCategoryBtn = document.getElementById('add-category-btn');
         const categoryModal = document.getElementById('category-modal');
         const closeCategoryModalBtn = document.getElementById('close-category-modal');
-        
+        const editCategoryModal = document.getElementById('edit-category-modal');
+        const closeEditCategoryModalBtn = document.getElementById('close-edit-category-modal');
+        const editCategoryNameInput = document.getElementById('edit-category-name');
+        const editCategorySubmitBtn = document.getElementById('edit-category-submit');
+        const editCategoryIdInput = document.getElementById('edit-category-id');
+
+        // --- Paginación ---
+        let currentPage = 1;
+        const itemsPerPage = 5;
+
+        const renderPaginatedTransactions = (transactions) => {
+            const totalPages = Math.ceil(transactions.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageTransactions = transactions.slice(startIndex, endIndex);
+
+            renderTransactions(pageTransactions);
+
+            // Mostrar controles de paginación
+            const paginationContainer = document.getElementById('pagination-controls');
+            if (paginationContainer) {
+                paginationContainer.innerHTML = `
+                    <button id="prev-page" ${currentPage === 1 ? 'disabled' : ''}>ANTERIOR</button>
+                    <span>Página ${currentPage} de ${totalPages}</span>
+                    <button id="next-page" ${currentPage === totalPages ? 'disabled' : ''}>SIGUIENTE</button>
+                `;
+
+                document.getElementById('prev-page')?.addEventListener('click', () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        renderPaginatedTransactions(transactions);
+                    }
+                });
+
+                document.getElementById('next-page')?.addEventListener('click', () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        renderPaginatedTransactions(transactions);
+                    }
+                });
+            }
+        };
 
         // --- Lógica de Renderizado con Animaciones ---
         const renderCategoriesForSelect = (categories = []) => {
@@ -277,7 +318,7 @@
 
         const renderTransactions = (transactions = []) => {
             if (!transactionsList) return;
-            showSkeletonLoader(transactionsList, transactions.length || 5, 4);
+            showSkeletonLoader(transactionsList, transactions.length || 5, 5);
             
             setTimeout(() => {
                 transactionsList.innerHTML = '';
@@ -287,21 +328,15 @@
                     const table = document.createElement('table');
                     table.className = 'transactions-table';
                     table.innerHTML = `
-                        <thead><tr><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Acciones</th></tr></thead>
+                        <thead><tr><th>Categoría</th><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Acciones</th></tr></thead>
                         <tbody>
                             ${transactions.map(t => `
                                 <tr data-id="${t.id}">
+                                    <td>${t.category_name || 'Sin categoría'}</td>
                                     <td>${t.description}</td>
                                     <td class="amount ${t.type === 'income' ? 'income' : 'expense'}">${t.type === 'income' ? '+' : '-'}$${parseFloat(t.amount).toLocaleString('es-CO', {minimumFractionDigits: 0, maximumFractionDigits: 0})} COP</td>
-                                    <td>
-                                        <span class="type-tag type-${t.type}">
-                                            ${t.type === 'income' ? 'Ingreso' : 'Gasto'}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button class="action-btn edit-btn" data-id="${t.id}">Editar</button>
-                                        <button class="action-btn delete-btn" data-id="${t.id}">Borrar</button>
-                                    </td>
+                                    <td><span class="type-tag type-${t.type}">${t.type === 'income' ? 'Ingreso' : 'Gasto'}</span></td>
+                                    <td><button class="action-btn edit-btn" data-id="${t.id}">Editar</button><button class="action-btn delete-btn" data-id="${t.id}">Borrar</button></td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -317,7 +352,7 @@
                 const [categories, transactions] = await Promise.all([api.getCategories(), api.getTransactions()]);
                 renderCategoriesForSelect(categories);
                 renderCategoryList(categories);
-                renderTransactions(transactions);
+                renderPaginatedTransactions(transactions); // <-- Paginado funcional
             } catch (error) {
                 showNotification(error.message, 'error');
             }
@@ -554,7 +589,8 @@
                     document.getElementById('type').value = tx.type;
                     document.getElementById('category').value = tx.category_id;
                     if (transactionFormTitle) transactionFormTitle.textContent = 'Editar Transacción';
-                    transactionForm.querySelector('button').textContent = 'Guardar Cambios';
+                    const submitButton = transactionForm.querySelector('button[type="submit"]');
+                    submitButton.textContent = 'Guardar Cambios';
                     editingTransactionId = id;
                     animationSystem.addMicroBounce(target);
                     document.querySelector('.menu-item[data-view="view-add-unified"]')?.click();
@@ -573,21 +609,56 @@
             deleteApi: api.deleteCategory,
             deleteSuccess: 'Categoría eliminada.',
             editAction: (id, target) => {
+                // Mostrar modal de edición
                 const currentName = target.closest('tr').querySelector('td').textContent;
-                const newName = prompt('Introduce el nuevo nombre para la categoría:', currentName);
-                if (newName && newName.trim() !== '' && newName.trim() !== currentName) {
-                    target.classList.add('loading');
-                    api.updateCategory(id, newName.trim())
-                        .then(() => {
-                            showNotification('Categoría actualizada.', 'success');
-                            animationSystem.addSuccessPulse(target);
-                            initDashboard();
-                        })
-                        .catch(error => showNotification(error.message, 'error'))
-                        .finally(() => target.classList.remove('loading'));
-                }
+                editCategoryIdInput.value = id;
+                editCategoryNameInput.value = currentName;
+                openModal(editCategoryModal);
+                target.classList.add('loading');
+                animationSystem.addMicroBounce(target);
             }
         });
+
+        // --- Editar Categoría (Nuevo Modal) ---
+        if (editCategoryModal) {
+            editCategoryModal.addEventListener('click', (e) => { if (e.target === editCategoryModal) closeModal(editCategoryModal); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && editCategoryModal.classList.contains('show')) closeModal(editCategoryModal); });
+        }
+
+        if (closeEditCategoryModalBtn) {
+            closeEditCategoryModalBtn.addEventListener('click', () => closeModal(editCategoryModal));
+        }
+
+        if (editCategorySubmitBtn) {
+            editCategorySubmitBtn.addEventListener('click', async () => {
+                const id = editCategoryIdInput.value;
+                const newName = editCategoryNameInput.value.trim();
+                if (!newName) {
+                    showNotification('El nombre no puede estar vacío', 'error');
+                    return;
+                }
+
+                const currentName = document.querySelector(`tr[data-id="${id}"] td:first-child`).textContent;
+                if (newName === currentName) {
+                    closeModal(editCategoryModal);
+                    return;
+                }
+
+                const submitButton = editCategorySubmitBtn;
+                submitButton.classList.add('loading');
+                try {
+                    await api.updateCategory(id, newName);
+                    showNotification('Categoría actualizada.', 'success');
+                    animationSystem.addSuccessPulse(submitButton);
+                    closeModal(editCategoryModal);
+                    initDashboard();
+                } catch (error) {
+                    showNotification(error.message, 'error');
+                } finally {
+                    submitButton.classList.remove('loading');
+                }
+            });
+        }
 
         // --- Easter egg y Atajos de Teclado ---
         let konamiCode = [];
