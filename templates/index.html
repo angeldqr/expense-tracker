@@ -9,6 +9,7 @@
 </head>
 <body>
 
+    <!-- Vista de Autenticación (Sin cambios) -->
     <div id="auth-view">
         <div class="stars">
             <div class="star"></div><div class="star"></div><div class="star"></div><div class="star"></div><div class="star"></div>
@@ -53,6 +54,7 @@
         </main>
     </div>
 
+    <!-- Vista Principal del Dashboard -->
     <div id="dashboard-view" style="display: none;">
         <nav class="sidebar">
             <div class="sidebar-header">
@@ -71,50 +73,68 @@
                         <span>Añadir</span>
                     </a>
                 </li>
-                </ul>
+            </ul>
             <div class="sidebar-footer">
                 <button id="logout-button">Cerrar Sesión</button>
             </div>
         </nav>
 
         <main class="main-content">
+            <!-- Vista de la Lista de Transacciones -->
             <div id="view-transactions-list" class="view">
                 <h2>Transacciones Recientes</h2>
                 <div id="transactions-list"></div>
             </div>
 
-            <div id="view-add-unified" class="view" style="display: none;">
+            <!-- Vista Unificada para Añadir (Ahora con el nuevo layout) -->
+            <!-- CORRECCIÓN: Se eliminó el `style="display: none;"` que causaba el problema -->
+            <div id="view-add-unified" class="view">
                 <div class="form-grid-container">
+                    <!-- Columna Izquierda: Formulario de Transacción -->
                     <section class="dashboard-form-container">
                         <h2>Nueva Transacción</h2>
                         <form id="transaction-form">
                             <div class="form-group"><label for="description">Descripción</label><input type="text" id="description" required></div>
                             <div class="form-group"><label for="amount">Monto</label><input type="number" id="amount" step="0.01" required></div>
                             <div class="form-group"><label for="type">Tipo</label><select id="type" required><option value="expense">Gasto</option><option value="income">Ingreso</option></select></div>
-                            <div class="form-group"><label for="category">Categoría</label><select id="category" required></select></div>
+                            <div class="form-group">
+                                <label for="category">Categoría</label>
+                                <div class="category-input-group">
+                                    <select id="category" required></select>
+                                    <button type="button" id="add-category-btn" class="add-category-button" aria-label="Añadir nueva categoría">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
                             <button type="submit">Añadir Transacción</button>
                         </form>
                     </section>
 
-                    <div class="right-column">
-                        <section class="dashboard-form-container">
-                            <h2>Nueva Categoría</h2>
-                            <form id="category-form">
-                                <div class="form-group">
-                                    <label for="category-name">Nombre</label>
-                                    <input type="text" id="category-name" placeholder="Ej: Ocio" required>
-                                </div>
-                                <button type="submit">Crear Categoría</button>
-                            </form>
-                        </section>
-                        <section class="dashboard-data-container">
-                            <h2>Mis Categorías</h2>
-                            <div id="category-list"></div>
-                        </section>
-                    </div>
+                    <!-- Columna Derecha: Lista de Categorías -->
+                    <section class="dashboard-data-container">
+                        <h2>Mis Categorías</h2>
+                        <div id="category-list"></div>
+                    </section>
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Modal para crear una nueva categoría -->
+    <div id="category-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button id="close-category-modal" class="close-button" aria-label="Cerrar modal">&times;</button>
+            <section class="dashboard-form-container">
+                <h2>Nueva Categoría</h2>
+                <form id="category-form">
+                    <div class="form-group">
+                        <label for="category-name">Nombre</label>
+                        <input type="text" id="category-name" placeholder="Ej: Ocio" required>
+                    </div>
+                    <button type="submit">Crear Categoría</button>
+                </form>
+            </section>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>

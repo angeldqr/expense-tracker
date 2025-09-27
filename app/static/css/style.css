@@ -48,6 +48,7 @@
 html {
     font-family: 'Poppins', 'Montserrat', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.5rem;
+    overflow-x: hidden; 
 }
 
 /* ========================================================================== */
@@ -56,6 +57,7 @@ html {
 
 body {
     min-height: 100vh;
+    width: 100vw;
     background: linear-gradient(135deg, var(--base-clr), var(--background-end));
     background-size: 200% 200%;
     animation: gradient-flow 20s ease-in-out infinite;
@@ -63,7 +65,7 @@ body {
     align-items: center;
     justify-content: center;
     padding: 40px;
-    overflow: hidden;
+    overflow-x: hidden;
     position: relative;
     color: var(--text-clr);
 }
@@ -538,8 +540,8 @@ body.dashboard-active {
     padding: 0;
     animation: none;
     background: var(--base-clr);
-    display: grid;
-    grid-template-columns: auto 1fr;
+    display: flex; /* CAMBIO: Usar flexbox para el layout principal */
+    overflow: hidden;
 }
 
 body.dashboard-active::before,
@@ -548,31 +550,22 @@ body.dashboard-active .stars {
 }
 
 #dashboard-view {
-    display: flex;
-    flex-direction: row;
-    width: 100vw;
-    height: 100vh;
-    padding: 0;
+    display: flex; /* Usar flexbox para alinear sidebar y main-content */
+    width: 100vw; /* Ocupar todo el ancho de la ventana */
+    height: 100vh; /* Ocupar todo el alto de la ventana */
     color: var(--text-clr);
 }
 
 /* --- Modern Sidebar --- */
 .sidebar {
-    box-sizing: border-box;
-    height: 100vh;
+    height: 100%;
     width: 250px;
     padding: 5px 1em;
     background-color: var(--base-clr);
     border-right: 1px solid var(--line-clr);
-    position: sticky;
-    top: 0;
-    align-self: start;
-    transition: 300ms ease-in-out;
-    overflow: hidden;
-    text-wrap: nowrap;
+    flex-shrink: 0; /* Evita que el sidebar se encoja */
     display: flex;
     flex-direction: column;
-    flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -659,11 +652,18 @@ body.dashboard-active .stars {
 
 /* --- Main Content Area --- */
 .main-content {
-    flex-grow: 1;
-    padding: min(30px, 7%);
-    overflow-y: auto;
+    flex-grow: 1; /* El contenido principal ocupa el espacio restante */
+    padding: 2.5rem; 
+    overflow-y: auto; /* Scroll SÓLO vertical si es necesario */
+    overflow-x: hidden; /* NUNCA scroll horizontal */
     background: var(--base-clr);
+    position: relative; 
 }
+
+.main-content .view {
+    width: 100%;
+}
+
 
 .main-content p {
     color: var(--secondary-text-clr);
@@ -677,7 +677,7 @@ body.dashboard-active .stars {
     border: 1px solid var(--line-clr);
     border-radius: var(--border-radius-normal);
     margin-bottom: 20px;
-    padding: min(3em, 15%);
+    padding: 2em;
 }
 
 .dashboard-form-container h2, .dashboard-data-container h2 {
@@ -710,6 +710,7 @@ body.dashboard-active .stars {
     color: var(--text-clr);
     font-size: 1rem;
     transition: all 0.2s ease;
+    height: 44px; /* Altura fija para alinear con el botón */
 }
 
 .form-group input:focus, .form-group select:focus {
@@ -719,7 +720,47 @@ body.dashboard-active .stars {
     background-color: var(--hover-clr);
 }
 
-.dashboard-form-container button {
+/* --- GRUPO DE INPUT PARA CATEGORÍA (NUEVOS ESTILOS) --- */
+.category-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* Espacio entre el select y el botón */
+}
+
+.category-input-group select {
+    flex-grow: 1; 
+    width: auto;
+}
+
+.add-category-button {
+    flex-shrink: 0; 
+    width: 44px; 
+    height: 44px; 
+    padding: 0; 
+    margin: 0; 
+    font-size: 1rem;
+    border-radius: var(--border-radius-normal);
+    background: var(--line-clr);
+    color: var(--secondary-text-clr);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease !important;
+    box-shadow: none;
+    text-transform: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.add-category-button:hover {
+    background-color: var(--accent-clr) !important;
+    color: var(--text-clr) !important;
+    transform: translateY(-2px) scale(1.05) !important;
+    box-shadow: 0 4px 15px rgba(94, 99, 255, 0.3) !important;
+}
+/* --- Fin de nuevos estilos --- */
+
+.dashboard-form-container button[type="submit"] {
     width: 100%;
     padding: 1rem;
     border-radius: var(--border-radius-normal);
@@ -733,9 +774,10 @@ body.dashboard-active .stars {
     letter-spacing: 0.5px;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(94, 99, 255, 0.3);
+    margin-top: 10px;
 }
 
-.dashboard-form-container button:hover {
+.dashboard-form-container button[type="submit"]:hover {
     background: var(--secondary-color);
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(94, 99, 255, 0.4);
@@ -809,51 +851,26 @@ body.dashboard-active .stars {
     cursor: pointer;
 }
 
-.transactions-table .action-btn.edit-btn {
+.action-btn.edit-btn, .action-btn.edit-cat-btn {
     background-color: var(--line-clr);
     color: var(--text-clr);
 }
 
-.transactions-table .action-btn.edit-btn:hover {
+.action-btn.edit-btn:hover, .action-btn.edit-cat-btn:hover {
     background-color: var(--accent-clr);
     color: var(--text-clr);
     transform: translateY(-2px);
 }
 
-.transactions-table .action-btn.delete-btn {
+.action-btn.delete-btn, .action-btn.delete-cat-btn {
     background-color: transparent;
     color: var(--error-color);
     border: 1px solid var(--error-color);
 }
 
-.transactions-table .action-btn.delete-btn:hover {
+.action-btn.delete-btn:hover, .action-btn.delete-cat-btn:hover {
     background-color: var(--error-color);
     color: var(--text-clr);
-    transform: translateY(-2px);
-}
-
-.category-table .action-btn {
-    flex-grow: 1;
-    padding: 0.8rem 1rem;
-}
-
-.category-table .action-btn.edit-btn {
-    background-color: var(--line-clr);
-    color: var(--text-clr);
-}
-
-.category-table .action-btn.edit-btn:hover {
-    background-color: var(--accent-clr);
-    color: var(--text-clr);
-}
-
-.category-table .action-btn.delete-btn {
-    background-color: var(--error-color);
-    color: var(--text-clr);
-}
-
-.category-table .action-btn.delete-btn:hover {
-    background-color: #dc2626;
     transform: translateY(-2px);
 }
 
@@ -939,22 +956,96 @@ body.dashboard-active .stars {
     padding: 0;
 }
 
-.dashboard-form-container {
-    max-width: 700px;
+#view-add-unified .form-grid-container {
+    display: grid;
+    grid-template-columns: 1.7fr 1.3fr;
+    gap: 2.5rem;
+    align-items: start;
+    max-width: 1400px; /* Limita el ancho en pantallas muy grandes para mejor estética */
+}
+
+/* --- Modal Styles --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-content {
+    position: relative;
+    width: 90%;
+    max-width: 500px;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.modal-overlay.show .modal-content {
+    transform: scale(1);
+}
+
+.modal-content .dashboard-form-container {
     margin: 0;
 }
+
+.close-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: var(--secondary-text-clr);
+    font-size: 2rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    margin: 0;
+    transition: color 0.2s, transform 0.2s;
+    z-index: 10;
+}
+
+.close-button:hover {
+    color: var(--text-clr);
+    transform: rotate(90deg);
+}
+
 
 /* ========================================================================== */
 /* == RESPONSIVE DESIGN (Mobile Optimization) ============================= */
 /* ========================================================================== */
 
+@media(max-width: 950px) {
+    #view-add-unified .form-grid-container {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media(max-width: 800px) {
     body.dashboard-active {
-        grid-template-columns: 1fr;
+        display: block; /* Volver a block para que el sidebar se pueda posicionar */
+    }
+
+    #dashboard-view {
+        display: block;
     }
     
     .main-content {
-        padding: 2em 1em 60px 1em;
+        padding: 2em 1em 80px 1em; /* Increased bottom padding for nav */
     }
     
     .dashboard-form-container, .dashboard-data-container {
@@ -972,6 +1063,7 @@ body.dashboard-active .stars {
         position: fixed;
         top: unset;
         bottom: 0;
+        left: 0;
         flex-direction: row;
         z-index: 1000;
     }
@@ -982,23 +1074,22 @@ body.dashboard-active .stars {
     
     .sidebar-menu {
         padding: 0;
-        display: grid;
-        grid-auto-columns: 60px;
-        grid-auto-flow: column;
+        display: flex;
+        justify-content: space-around;
         align-items: center;
-        overflow-x: scroll;
-        flex-grow: 1;
+        width: 100%;
         height: 100%;
     }
     
     .sidebar-menu li {
         height: 100%;
         margin: 0;
+        flex-grow: 1;
     }
     
     .menu-item {
-        width: 60px;
-        height: 60px;
+        width: 100%;
+        height: 100%;
         padding: 0;
         border-radius: 0;
         justify-content: center;
@@ -1017,22 +1108,9 @@ body.dashboard-active .stars {
     }
     
     .sidebar-footer {
-        margin: 0;
-        padding: 0;
+        display: none;
     }
-    
-    #logout-button {
-        width: 60px;
-        height: 60px;
-        padding: 0;
-        border-radius: 0;
-        font-size: 0.6rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }
-    
+        
     /* Auth view mobile adjustments */
     .container {
         width: 95vw;
@@ -1126,156 +1204,3 @@ body.dashboard-active .stars {
     }
 }
 
-/* ========================================================================== */
-/* == UTILITY CLASSES ====================================================== */
-/* ========================================================================== */
-
-.text-success { color: var(--success-color); }
-.text-error { color: var(--error-color); }
-.text-warning { color: var(--warning-color); }
-.text-muted { color: var(--secondary-text-clr); }
-
-.bg-accent { background-color: var(--accent-clr); }
-.bg-hover { background-color: var(--hover-clr); }
-.bg-base { background-color: var(--base-clr); }
-
-.border-accent { border-color: var(--accent-clr); }
-.border-line { border-color: var(--line-clr); }
-
-.rounded { border-radius: var(--border-radius-normal); }
-.rounded-full { border-radius: var(--border-radius-capsule); }
-
-.shadow-accent { box-shadow: 0 4px 15px rgba(94, 99, 255, 0.3); }
-.shadow-success { box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); }
-.shadow-error { box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
-
-/* ========================================================================== */
-/* == ANIMATION ENHANCEMENTS =============================================== */
-/* ========================================================================== */
-
-.fade-in {
-    animation: fadeIn 0.5s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.slide-in {
-    animation: slideIn 0.5s ease-out;
-}
-
-@keyframes slideIn {
-    from { transform: translateX(-100%); }
-    to { transform: translateX(0); }
-}
-
-.bounce-in {
-    animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-@keyframes bounceIn {
-    0% { transform: scale(0.3); opacity: 0; }
-    50% { transform: scale(1.05); }
-    70% { transform: scale(0.9); }
-    100% { transform: scale(1); opacity: 1; }
-}
-
-/* ========================================================================== */
-/* == LOADING STATES ======================================================= */
-/* ========================================================================== */
-
-.loading {
-    position: relative;
-    pointer-events: none;
-}
-
-.loading::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--line-clr);
-    border-top: 2px solid var(--accent-clr);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: translate(-50%, -50%) rotate(0deg); }
-    100% { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-/* ========================================================================== */
-/* == ACCESSIBILITY IMPROVEMENTS =========================================== */
-/* ========================================================================== */
-
-.sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-}
-
-/* Focus styles for better accessibility */
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-a:focus-visible {
-    outline: 2px solid var(--accent-clr);
-    outline-offset: 2px;
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-    :root {
-        --text-clr: #ffffff;
-        --secondary-text-clr: #cccccc;
-        --base-clr: #000000;
-        --hover-clr: #333333;
-        --line-clr: #666666;
-    }
-}
-
-/* --- ESTILO PARA EL LAYOUT DE DOS FORMULARIOS --- */
-
-.form-grid-container {
-    display: grid;
-    grid-template-columns: 2fr 1fr; /* La columna de transacción será el doble de ancha */
-    gap: 2rem;
-    align-items: start; /* Alinea los contenedores en la parte superior */
-}
-
-/* --- ESTILO PARA EL LAYOUT DE VISTA UNIFICADA --- */
-
-.form-grid-container {
-    display: grid;
-    grid-template-columns: 2fr 1.2fr; /* Columna de transacción más ancha */
-    gap: 2rem;
-    align-items: start;
-}
-
-.right-column {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem; /* Espacio entre el formulario y la lista de categorías */
-}
