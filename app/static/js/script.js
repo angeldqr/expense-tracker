@@ -238,6 +238,28 @@
         const editCategorySubmitBtn = document.getElementById('edit-category-submit');
         const editCategoryIdInput = document.getElementById('edit-category-id');
 
+        // --- Filtros ---
+        let filters = {
+            search: '',
+            category: '',
+            type: '',
+            startDate: '',
+            endDate: ''
+        };
+
+        const applyFilters = (transactions) => {
+            return transactions.filter(t => {
+                const matchesSearch = !filters.search || t.description.toLowerCase().includes(filters.search.toLowerCase());
+                const matchesCategory = !filters.category || t.category_id === parseInt(filters.category);
+                const matchesType = !filters.type || t.type === filters.type;
+                const date = new Date(t.date);
+                const matchesStartDate = !filters.startDate || date >= new Date(filters.startDate);
+                const matchesEndDate = !filters.endDate || date <= new Date(filters.endDate);
+
+                return matchesSearch && matchesCategory && matchesType && matchesStartDate && matchesEndDate;
+            });
+        };
+
         // --- Paginación de transacciones ---
         let currentPage = 1;
         const itemsPerPage = 5;
@@ -262,14 +284,14 @@
                 document.getElementById('prev-page')?.addEventListener('click', () => {
                     if (currentPage > 1) {
                         currentPage--;
-                        renderPaginatedTransactions(transactions);
+                        renderPaginatedTransactions(applyFilters(transactions));
                     }
                 });
 
                 document.getElementById('next-page')?.addEventListener('click', () => {
                     if (currentPage < totalPages) {
                         currentPage++;
-                        renderPaginatedTransactions(transactions);
+                        renderPaginatedTransactions(applyFilters(transactions));
                     }
                 });
             }
@@ -388,8 +410,8 @@
             try {
                 const [categories, transactions] = await Promise.all([api.getCategories(), api.getTransactions()]);
                 renderCategoriesForSelect(categories);
-                renderPaginatedCategories(categories); // <-- Paginado funcional
-                renderPaginatedTransactions(transactions); // <-- Paginado funcional
+                renderPaginatedCategories(categories);
+                renderPaginatedTransactions(applyFilters(transactions)); // <-- Aplicar filtros
             } catch (error) {
                 showNotification(error.message, 'error');
             }
@@ -478,6 +500,42 @@
                  initialView.classList.add('active');
             }
         }
+
+        // --- Listeners de filtros ---
+        document.getElementById('search-input')?.addEventListener('input', (e) => {
+            filters.search = e.target.value;
+            initDashboard(); // <-- Actualizar tabla
+        });
+
+        document.getElementById('category-filter')?.addEventListener('change', (e) => {
+            filters.category = e.target.value;
+            initDashboard();
+        });
+
+        document.getElementById('type-filter')?.addEventListener('change', (e) => {
+            filters.type = e.target.value;
+            initDashboard();
+        });
+
+        document.getElementById('start-date')?.addEventListener('change', (e) => {
+            filters.startDate = e.target.value;
+            initDashboard();
+        });
+
+        document.getElementById('end-date')?.addEventListener('change', (e) => {
+            filters.endDate = e.target.value;
+            initDashboard();
+        });
+
+        document.getElementById('clear-filters')?.addEventListener('click', () => {
+            filters = { search: '', category: '', type: '', startDate: '', endDate: '' };
+            document.getElementById('search-input').value = '';
+            document.getElementById('category-filter').value = '';
+            document.getElementById('type-filter').value = '';
+            document.getElementById('start-date').value = '';
+            document.getElementById('end-date').value = '';
+            initDashboard();
+        });
 
         // --- Lógica de Formularios y Modal ---
         const handleAuthFormSubmit = async (event) => {
@@ -580,81 +638,94 @@
             });
         }
         
-        // --- Manejo de clics en las tablas (Refactorizado) ---
-        const handleTableClicks = (container, actions) => {
-            if (!container) return;
-            container.addEventListener('click', async (e) => {
-                const target = e.target.closest('.action-btn');
-                if (!target) return;
+        // --- Manejo de clics en las tablas (CORREGIDO) ---
+        const setupTableEventListeners = () => {
+            // Para transacciones
+            if (transactionsList) {
+                transactionsList.addEventListener('click', async (e) => {
+                    const target = e.target.closest('.action-btn');
+                    if (!target) return;
 
-                const id = target.dataset.id;
-                const row = target.closest('tr');
+                    const id = target.dataset.id;
+                    const row = target.closest('tr');
 
-                if (target.classList.contains(actions.deleteClass)) {
-                    if (confirm(actions.deleteConfirm)) {
-                        row.style.transform = 'translateX(-100%) scale(0.8)';
-                        row.style.opacity = '0';
-                        row.style.transition = 'all 0.5s ease-out';
+                    if (target.classList.contains('delete-btn')) {
+                        if (confirm('¿Estás seguro de que quieres eliminar esta transacción?')) {
+                            row.style.transform = 'translateX(-100%) scale(0.8)';
+                            row.style.opacity = '0';
+                            row.style.transition = 'all 0.5s ease-out';
+                            try {
+                                await api.deleteTransaction(id);
+                                showNotification('Transacción eliminada.', 'success');
+                                setTimeout(() => initDashboard(), 500);
+                            } catch (error) { 
+                                showNotification(error.message, 'error');
+                                row.style.transform = 'translateX(0) scale(1)';
+                                row.style.opacity = '1';
+                            }
+                        }
+                    } else if (target.classList.contains('edit-btn')) {
+                        target.classList.add('loading');
                         try {
-                            await actions.deleteApi(id);
-                            showNotification(actions.deleteSuccess, 'success');
-                            setTimeout(() => initDashboard(), 500);
-                        } catch (error) { 
+                            const tx = await api.getTransactionById(id);
+                            document.getElementById('description').value = tx.description;
+                            document.getElementById('amount').value = tx.amount;
+                            document.getElementById('type').value = tx.type;
+                            document.getElementById('category').value = tx.category_id;
+                            if (transactionFormTitle) transactionFormTitle.textContent = 'Editar Transacción';
+                            const submitButton = transactionForm.querySelector('button[type="submit"]');
+                            submitButton.textContent = 'Guardar Cambios';
+                            editingTransactionId = id;
+                            animationSystem.addMicroBounce(target);
+                            document.querySelector('.menu-item[data-view="view-add-unified"]')?.click();
+                        } catch (error) {
                             showNotification(error.message, 'error');
-                            row.style.transform = 'translateX(0) scale(1)';
-                            row.style.opacity = '1';
+                        } finally {
+                            target.classList.remove('loading');
                         }
                     }
-                } else if (target.classList.contains(actions.editClass)) {
-                    actions.editAction(id, target);
-                }
-            });
+                });
+            }
+
+            // Para categorías
+            if (categoryList) {
+                categoryList.addEventListener('click', async (e) => {
+                    const target = e.target.closest('.action-btn');
+                    if (!target) return;
+
+                    const id = target.dataset.id;
+                    const row = target.closest('tr');
+
+                    if (target.classList.contains('delete-cat-btn')) {
+                        if (confirm('¿Seguro que quieres eliminar esta categoría? (Esto fallará si tiene transacciones asociadas)')) {
+                            row.style.transform = 'translateX(-100%) scale(0.8)';
+                            row.style.opacity = '0';
+                            row.style.transition = 'all 0.5s ease-out';
+                            try {
+                                await api.deleteCategory(id);
+                                showNotification('Categoría eliminada.', 'success');
+                                setTimeout(() => initDashboard(), 500);
+                            } catch (error) { 
+                                showNotification(error.message, 'error');
+                                row.style.transform = 'translateX(0) scale(1)';
+                                row.style.opacity = '1';
+                            }
+                        }
+                    } else if (target.classList.contains('edit-cat-btn')) {
+                        // Mostrar modal de edición
+                        const currentName = target.closest('tr').querySelector('td').textContent;
+                        editCategoryIdInput.value = id;
+                        editCategoryNameInput.value = currentName;
+                        openModal(editCategoryModal);
+                        target.classList.add('loading');
+                        animationSystem.addMicroBounce(target);
+                    }
+                });
+            }
         };
 
-        handleTableClicks(transactionsList, {
-            deleteClass: 'delete-btn',
-            editClass: 'edit-btn',
-            deleteConfirm: '¿Estás seguro de que quieres eliminar esta transacción?',
-            deleteApi: api.deleteTransaction,
-            deleteSuccess: 'Transacción eliminada.',
-            editAction: async (id, target) => {
-                target.classList.add('loading');
-                try {
-                    const tx = await api.getTransactionById(id);
-                    document.getElementById('description').value = tx.description;
-                    document.getElementById('amount').value = tx.amount;
-                    document.getElementById('type').value = tx.type;
-                    document.getElementById('category').value = tx.category_id;
-                    if (transactionFormTitle) transactionFormTitle.textContent = 'Editar Transacción';
-                    const submitButton = transactionForm.querySelector('button[type="submit"]');
-                    submitButton.textContent = 'Guardar Cambios';
-                    editingTransactionId = id;
-                    animationSystem.addMicroBounce(target);
-                    document.querySelector('.menu-item[data-view="view-add-unified"]')?.click();
-                } catch (error) {
-                    showNotification(error.message, 'error');
-                } finally {
-                    target.classList.remove('loading');
-                }
-            }
-        });
-
-        handleTableClicks(categoryList, {
-            deleteClass: 'delete-cat-btn',
-            editClass: 'edit-cat-btn',
-            deleteConfirm: '¿Seguro que quieres eliminar esta categoría? (Esto fallará si tiene transacciones asociadas)',
-            deleteApi: api.deleteCategory,
-            deleteSuccess: 'Categoría eliminada.',
-            editAction: (id, target) => {
-                // Mostrar modal de edición
-                const currentName = target.closest('tr').querySelector('td').textContent;
-                editCategoryIdInput.value = id;
-                editCategoryNameInput.value = currentName;
-                openModal(editCategoryModal);
-                target.classList.add('loading');
-                animationSystem.addMicroBounce(target);
-            }
-        });
+        // Llamar a la función para configurar los listeners
+        setupTableEventListeners();
 
         // --- Editar Categoría (Nuevo Modal) ---
         if (editCategoryModal) {
