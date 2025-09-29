@@ -264,7 +264,7 @@
         categories: [],
         transactions: [],
         filteredTransactions: [],
-        filters: { search: '', category: '', type: '', startDate: '', endDate: '' },
+        filters: { search: '', category: '', type: '', month: '', transactionDate: '' },
         ui: { 
             currentPage: 1, 
             currentCategoryPage: 1, 
@@ -291,18 +291,57 @@
                 const matchesCategory = !this.filters.category || 
                     t.category_id === parseInt(this.filters.category);
                 const matchesType = !this.filters.type || t.type === this.filters.type;
-                const date = new Date(t.date);
-                const matchesStartDate = !this.filters.startDate || 
-                    date >= new Date(this.filters.startDate);
-                const matchesEndDate = !this.filters.endDate || 
-                    date <= new Date(this.filters.endDate);
+                
+                // Usar transaction_date del backend (ya viene en formato YYYY-MM-DD)
+                let matchesTransactionDate = true;
+                if (this.filters.transactionDate) {
+                    matchesTransactionDate = this.filters.transactionDate === t.transaction_date;
+                }
 
-                return matchesSearch && matchesCategory && matchesType && 
-                       matchesStartDate && matchesEndDate;
+                // Usar transaction_month del backend
+                let matchesMonth = true;
+                if (this.filters.month) {
+                    matchesMonth = this.filters.month === t.transaction_month;
+                }
+
+                return matchesSearch && matchesCategory && matchesType && matchesMonth && matchesTransactionDate;
             });
         },
         
+        updateCategoryName(categoryId, newName) {
+            // Actualizar el nombre en el array de categorías
+            const categoryIndex = this.categories.findIndex(cat => cat.id === parseInt(categoryId));
+            if (categoryIndex !== -1) {
+                this.categories[categoryIndex].name = newName;
+            }
+            
+            // Actualizar el nombre en todas las transacciones que usan esta categoría
+            this.transactions = this.transactions.map(transaction => {
+                if (transaction.category_id === parseInt(categoryId)) {
+                    return {
+                        ...transaction,
+                        category_name: newName
+                    };
+                }
+                return transaction;
+            });
+            
+            // Actualizar también las transacciones filtradas
+            this.filteredTransactions = this.filteredTransactions.map(transaction => {
+                if (transaction.category_id === parseInt(categoryId)) {
+                    return {
+                        ...transaction,
+                        category_name: newName
+                    };
+                }
+                return transaction;
+            });
+            
+            this.notifySubscribers();
+        },
+        
         subscribers: [],
+        
         subscribe(callback) {
             this.subscribers.push(callback);
         },
@@ -422,6 +461,167 @@
                 skeletonRow.appendChild(skeletonCell);
             }
             container.appendChild(skeletonRow);
+        }
+    };
+
+    // =================================================================
+    // FUNCIONES AUXILIARES PARA NUEVA ESTRUCTURA HTML
+    // =================================================================
+    
+    // Mostrar/ocultar loading state
+    const showLoadingState = (show) => {
+        const loadingElement = document.getElementById('transactions-loading');
+        if (loadingElement) {
+            loadingElement.style.display = show ? 'flex' : 'none';
+            loadingElement.setAttribute('aria-hidden', show ? 'false' : 'true');
+        }
+    };
+
+    // Actualizar badge de transacciones en sidebar
+    const updateTransactionsBadge = (count) => {
+        const badge = document.getElementById('transactions-count');
+        if (badge) {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'inline' : 'none';
+        }
+    };
+
+    // Poblar filtro de categorías
+    const populateCategoryFilter = (categories) => {
+        const categoryFilter = document.getElementById('category-filter');
+        if (categoryFilter) {
+            const currentValue = categoryFilter.value;
+            categoryFilter.innerHTML = '<option value="">Todas las categorías</option>';
+            
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.textContent = cat.name;
+                categoryFilter.appendChild(option);
+            });
+            
+            if (currentValue) categoryFilter.value = currentValue;
+        }
+    };
+
+    // Poblar filtro de meses
+    const populateMonthFilter = (transactions) => {
+        const monthFilter = document.getElementById('month-filter');
+        if (monthFilter) {
+            const currentValue = monthFilter.value;
+            monthFilter.innerHTML = '<option value="">Todos los meses</option>';
+            
+            // Obtener meses únicos usando transaction_month del backend
+            const months = [...new Set(transactions.map(t => t.transaction_month))].sort().reverse();
+            
+            months.forEach(month => {
+                const option = document.createElement('option');
+                option.value = month;
+                // Formatear mes para mostrar (ej: "2024-01" -> "Enero 2024")
+                const [year, monthNum] = month.split('-');
+                const monthNames = [
+                    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+                ];
+                option.textContent = `${monthNames[parseInt(monthNum) - 1]} ${year}`;
+                monthFilter.appendChild(option);
+            });
+            
+            if (currentValue) monthFilter.value = currentValue;
+        }
+    };
+
+    // Establecer fecha actual por defecto en el formulario
+    const setDefaultTransactionDate = () => {
+        const dateInput = document.getElementById('transaction-date');
+        if (dateInput && !dateInput.value) {
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
+        }
+    };
+
+    // Validación en tiempo real para formularios
+    const setupRealTimeValidation = () => {
+        const inputs = document.querySelectorAll('input[data-validation], select[data-validation]');
+        
+        inputs.forEach(input => {
+            input.addEventListener('blur', () => validateInputField(input));
+            input.addEventListener('input', () => {
+                if (input.classList.contains('input-error')) {
+                    validateInputField(input);
+                }
+            });
+        });
+    };
+
+    const validateInputField = (input) => {
+        const validationRules = input.dataset.validation;
+        if (!validationRules) return;
+
+        const rules = validationRules.split(',').map(rule => rule.trim());
+        const container = input.parentElement;
+        
+        // Limpiar errores previos
+        container.querySelectorAll('.error-message').forEach(el => el.remove());
+        input.classList.remove('input-error');
+
+        // Validar según las reglas
+        for (const rule of rules) {
+            let error = null;
+
+            if (rule === 'required' && !input.value.trim()) {
+                error = 'Este campo es obligatorio';
+            } else if (rule.startsWith('maxLength(')) {
+                const maxLength = parseInt(rule.match(/\d+/)[0]);
+                if (input.value.length > maxLength) {
+                    error = `Máximo ${maxLength} caracteres`;
+                }
+            } else if (rule === 'amount') {
+                const num = parseFloat(input.value);
+                if (isNaN(num) || num <= 0) {
+                    error = 'Debe ser un número mayor a 0';
+                }
+            } else if (rule === 'uniqueCategory') {
+                error = validators.uniqueCategory(appState.categories)(input.value);
+            } else if (rule === 'uniqueCategoryEdit') {
+                const categoryId = document.getElementById('edit-category-id')?.value;
+                error = validators.uniqueCategoryEdit(appState.categories, categoryId)(input.value);
+            }
+
+            if (error) {
+                input.classList.add('input-error');
+                const errorElement = document.createElement('div');
+                errorElement.className = 'error-message';
+                errorElement.textContent = error;
+                container.appendChild(errorElement);
+                break;
+            }
+        }
+    };
+
+    // Mejorar botones de loading
+    const setButtonLoading = (button, loading) => {
+        const btnText = button.querySelector('.btn-text');
+        const btnLoading = button.querySelector('.btn-loading');
+        
+        if (btnText && btnLoading) {
+            btnText.style.display = loading ? 'none' : 'inline';
+            btnLoading.style.display = loading ? 'inline-flex' : 'none';
+        } else {
+            // Fallback para botones sin estructura específica
+            if (loading) {
+                button.dataset.originalText = button.textContent;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+            } else {
+                button.textContent = button.dataset.originalText || button.textContent;
+            }
+        }
+        
+        button.disabled = loading;
+        if (loading) {
+            button.classList.add('loading');
+        } else {
+            button.classList.remove('loading');
         }
     };
 
@@ -589,7 +789,7 @@
 
         const renderTransactions = (transactions = []) => {
             if (!transactionsList) return;
-            showSkeletonLoader(transactionsList, transactions.length || 5, 5);
+            showSkeletonLoader(transactionsList, transactions.length || 5, 6);
             
             setTimeout(() => {
                 transactionsList.innerHTML = '';
@@ -599,17 +799,26 @@
                     const table = document.createElement('table');
                     table.className = 'transactions-table';
                     table.innerHTML = `
-                        <thead><tr><th>Categoría</th><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Acciones</th></tr></thead>
+                        <thead><tr><th>Categoría</th><th>Fecha</th><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Acciones</th></tr></thead>
                         <tbody>
-                            ${transactions.map(t => `
+                            ${transactions.map(t => {
+                                // Usar transaction_date del backend (formato YYYY-MM-DD)
+                                const transactionDate = new Date(t.transaction_date + 'T00:00:00');
+                                const formattedDate = transactionDate.toLocaleDateString('es-ES', { 
+                                    day: '2-digit', 
+                                    month: 'short', 
+                                    year: 'numeric' 
+                                });
+                                return `
                                 <tr data-id="${t.id}">
                                     <td>${t.category_name || 'Sin categoría'}</td>
+                                    <td>${formattedDate}</td>
                                     <td>${t.description}</td>
                                     <td class="amount ${t.type === 'income' ? 'income' : 'expense'}">${t.type === 'income' ? '+' : '-'}$${parseFloat(t.amount).toLocaleString('es-CO', {minimumFractionDigits: 0, maximumFractionDigits: 0})} COP</td>
                                     <td><span class="type-tag type-${t.type}">${t.type === 'income' ? 'Ingreso' : 'Gasto'}</span></td>
                                     <td><button class="action-btn edit-btn" data-id="${t.id}">Editar</button><button class="action-btn delete-btn" data-id="${t.id}">Borrar</button></td>
                                 </tr>
-                            `).join('')}
+                            `}).join('')}
                         </tbody>
                     `;
                     transactionsList.appendChild(table);
@@ -621,6 +830,9 @@
         const initDashboard = async () => {
             try {
                 appState.setState({ ui: { ...appState.ui, loading: true } });
+                
+                // Mostrar loading state
+                showLoadingState(true);
                 
                 const [categories, transactions] = await Promise.all([
                     api.getCategories(), 
@@ -634,6 +846,15 @@
                     ui: { ...appState.ui, loading: false }
                 });
                 
+                // Poblar filtro de categorías
+                populateCategoryFilter(categories);
+                
+                // Poblar filtro de meses
+                populateMonthFilter(transactions);
+                
+                // Establecer fecha por defecto en formulario
+                setDefaultTransactionDate();
+                
                 // Aplicar filtros
                 appState.applyFilters();
                 
@@ -642,8 +863,12 @@
                 renderPaginatedCategories(categories);
                 renderPaginatedTransactions(appState.filteredTransactions);
                 
+                // Ocultar loading state
+                showLoadingState(false);
+                
             } catch (error) {
                 appState.setState({ ui: { ...appState.ui, loading: false } });
+                showLoadingState(false);
                 showNotification(error.message, 'error');
                 logger.log('error', 'Dashboard initialization failed', { error: error.message });
             }
@@ -674,6 +899,9 @@
         } else {
             showAuth();
         }
+
+        // Configurar validación en tiempo real
+        setupRealTimeValidation();
 
         // --- Listeners de Animaciones y UI ---
         if (registerBtn) registerBtn.addEventListener('click', () => {
@@ -736,7 +964,8 @@
         // --- Debounced search para optimizar rendimiento ---
         const debouncedSearch = debounce((value) => {
             appState.updateFilters({ search: value });
-            initDashboard();
+            appState.applyFilters();
+            renderPaginatedTransactions(appState.filteredTransactions);
         }, 300);
 
         // --- Listeners de filtros ---
@@ -746,32 +975,38 @@
 
         document.getElementById('category-filter')?.addEventListener('change', (e) => {
             appState.updateFilters({ category: e.target.value });
-            initDashboard();
+            appState.applyFilters();
+            renderPaginatedTransactions(appState.filteredTransactions);
         });
 
         document.getElementById('type-filter')?.addEventListener('change', (e) => {
             appState.updateFilters({ type: e.target.value });
-            initDashboard();
+            appState.applyFilters();
+            renderPaginatedTransactions(appState.filteredTransactions);
         });
 
-        document.getElementById('start-date')?.addEventListener('change', (e) => {
-            appState.updateFilters({ startDate: e.target.value });
-            initDashboard();
+        document.getElementById('month-filter')?.addEventListener('change', (e) => {
+            appState.updateFilters({ month: e.target.value });
+            appState.applyFilters();
+            renderPaginatedTransactions(appState.filteredTransactions);
         });
 
-        document.getElementById('end-date')?.addEventListener('change', (e) => {
-            appState.updateFilters({ endDate: e.target.value });
-            initDashboard();
+        document.getElementById('transaction-date-filter')?.addEventListener('change', (e) => {
+            appState.updateFilters({ transactionDate: e.target.value });
+            // Aplicar filtros inmediatamente en lugar de reinicializar todo
+            appState.applyFilters();
+            renderPaginatedTransactions(appState.filteredTransactions);
         });
 
         document.getElementById('clear-filters')?.addEventListener('click', () => {
-            appState.updateFilters({ search: '', category: '', type: '', startDate: '', endDate: '' });
+            appState.updateFilters({ search: '', category: '', type: '', month: '', transactionDate: '' });
             document.getElementById('search-input').value = '';
             document.getElementById('category-filter').value = '';
             document.getElementById('type-filter').value = '';
-            document.getElementById('start-date').value = '';
-            document.getElementById('end-date').value = '';
-            initDashboard();
+            document.getElementById('month-filter').value = '';
+            document.getElementById('transaction-date-filter').value = '';
+            appState.applyFilters();
+            renderPaginatedTransactions(appState.filteredTransactions);
         });
 
         // --- Lógica de Formularios y Modal ---
@@ -816,6 +1051,9 @@
         if (closeCategoryModalBtn) closeCategoryModalBtn.addEventListener('click', () => closeModal(categoryModal));
         if (categoryModal) categoryModal.addEventListener('click', (e) => { if (e.target === categoryModal) closeModal(categoryModal); });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && categoryModal.classList.contains('show')) closeModal(categoryModal); });
+
+        // Botón cancelar en modal de crear categoría
+        document.getElementById('cancel-category-btn')?.addEventListener('click', () => closeModal(categoryModal));
 
         if (categoryForm) {
             categoryForm.addEventListener('submit', async (e) => {
@@ -874,6 +1112,7 @@
                     amount: document.getElementById('amount').value,
                     type: document.getElementById('type').value,
                     category_id: categorySelect.value,
+                    transaction_date: document.getElementById('transaction-date').value,
                 };
                 
                 submitButton.classList.add('loading');
@@ -934,6 +1173,11 @@
                         document.getElementById('amount').value = tx.amount;
                         document.getElementById('type').value = tx.type;
                         document.getElementById('category').value = tx.category_id;
+                        // Usar transaction_date del backend
+                        const dateInput = document.getElementById('transaction-date');
+                        if (dateInput && tx.transaction_date) {
+                            dateInput.value = tx.transaction_date; // Ya viene en formato YYYY-MM-DD
+                        }
                         if (transactionFormTitle) transactionFormTitle.textContent = 'Editar Transacción';
                         const submitButton = transactionForm.querySelector('button[type="submit"]');
                         submitButton.textContent = 'Guardar Cambios';
@@ -1031,10 +1275,20 @@
                 submitButton.classList.add('loading');
                 try {
                     await api.updateCategory(id, newName);
+                    
+                    // Actualizar el estado en tiempo real
+                    appState.updateCategoryName(id, newName);
+                    
                     showNotification('Categoría actualizada.', 'success');
                     animationSystem.addSuccessPulse(submitButton);
                     closeModal(editCategoryModal);
-                    initDashboard();
+                    
+                    // Re-renderizar elementos afectados
+                    renderCategoriesForSelect(appState.categories);
+                    populateCategoryFilter(appState.categories);
+                    renderPaginatedTransactions(appState.filteredTransactions);
+                    renderPaginatedCategories(appState.categories);
+                    
                 } catch (error) {
                     showNotification(error.message, 'error');
                 } finally {

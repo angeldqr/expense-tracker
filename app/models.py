@@ -29,7 +29,9 @@ class Transaction(db.Model):
     description = db.Column(db.String(200), nullable=False)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     type = db.Column(db.String(7), nullable=False)
-    date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    transaction_date = db.Column(db.Date, nullable=False)  # Fecha real de la transacción
+    transaction_month = db.Column(db.String(7), nullable=False)  # YYYY-MM para filtrado
+    date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)  # Fecha de registro
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
     category = db.relationship('Category', backref='transactions', lazy='joined')  # <-- Cambiado a 'joined'
