@@ -17,33 +17,147 @@
 
     const logout = () => {
         localStorage.removeItem(TOKEN_KEY);
+        cache.clear();
         window.location.reload();
+    };
+
+    // Sistema de cache inteligente
+    const cache = {
+        data: new Map(),
+        timestamps: new Map(),
+        TTL: 5 * 60 * 1000, // 5 minutos
+        
+        set(key, value) {
+            this.data.set(key, value);
+            this.timestamps.set(key, Date.now());
+        },
+        
+        get(key) {
+            const timestamp = this.timestamps.get(key);
+            if (!timestamp || Date.now() - timestamp > this.TTL) {
+                this.data.delete(key);
+                this.timestamps.delete(key);
+                return null;
+            }
+            return this.data.get(key);
+        },
+        
+        invalidate(pattern) {
+            for (const key of this.data.keys()) {
+                if (key.includes(pattern)) {
+                    this.data.delete(key);
+                    this.timestamps.delete(key);
+                }
+            }
+        },
+
+        clear() {
+            this.data.clear();
+            this.timestamps.clear();
+        }
+    };
+
+    // Logger mejorado
+    const logger = {
+        log(level, message, data = {}) {
+            const timestamp = new Date().toISOString();
+            const logEntry = { timestamp, level, message, data };
+            
+            console[level](`[${timestamp}] ${message}`, data);
+            
+            if (level === 'error') {
+                this.reportError(logEntry);
+            }
+        },
+        
+        reportError(logEntry) {
+            // En producción, enviar a servicio de logging
+            try {
+                localStorage.setItem('app_errors', JSON.stringify([
+                    ...JSON.parse(localStorage.getItem('app_errors') || '[]').slice(-9),
+                    logEntry
+                ]));
+            } catch (e) {
+                console.warn('No se pudo guardar el error en localStorage');
+            }
+        }
     };
     
     const handleResponse = async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-            if (response.status === 401 && data.msg === "Token has expired") { 
-                showNotification('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.', 'error');
-                setTimeout(logout, 2000);
+        try {
+            const data = await response.json();
+            if (!response.ok) {
+                if (response.status === 401 && data.msg === "Token has expired") { 
+                    showNotification('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.', 'error');
+                    setTimeout(logout, 2000);
+                }
+                const error = new Error(data.error || data.message || 'Error desconocido.');
+                logger.log('error', 'API Error', { status: response.status, url: response.url, data });
+                throw error;
             }
-            throw new Error(data.error || data.message || 'Error desconocido.');
+            return data;
+        } catch (error) {
+            if (error.name === 'SyntaxError') {
+                logger.log('error', 'Invalid JSON response', { url: response.url });
+                throw new Error('Respuesta inválida del servidor');
+            }
+            throw error;
         }
-        return data;
+    };
+
+    // API con retry y cache
+    const apiWithRetry = {
+        async request(url, options, retries = 3, useCache = false) {
+            const cacheKey = `${url}_${JSON.stringify(options)}`;
+            
+            // Verificar cache para GET requests
+            if (useCache && (!options.method || options.method === 'GET')) {
+                const cached = cache.get(cacheKey);
+                if (cached) {
+                    logger.log('info', 'Cache hit', { url });
+                    return cached;
+                }
+            }
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    const data = await handleResponse(response);
+                    
+                    // Guardar en cache para GET requests exitosos
+                    if (useCache && (!options.method || options.method === 'GET')) {
+                        cache.set(cacheKey, data);
+                    }
+                    
+                    return data;
+                } catch (error) {
+                    logger.log('warn', `API request failed (attempt ${i + 1})`, { url, error: error.message });
+                    
+                    if (i === retries - 1) throw error;
+                    
+                    // Solo reintentar en errores de red
+                    if (error.message.includes('fetch') || error.message.includes('Network')) {
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                        continue;
+                    }
+                    throw error;
+                }
+            }
+        }
     };
 
     const api = {
-        login: (email, password) => fetch(`${BASE_URL}/auth/login`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email, password }) }).then(handleResponse),
-        register: (name, email, password) => fetch(`${BASE_URL}/auth/register`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, email, password }) }).then(handleResponse),
-        getCategories: () => fetch(`${BASE_URL}/categories/`, { headers: getAuthHeader() }).then(handleResponse),
-        createCategory: (name) => fetch(`${BASE_URL}/categories/`, { method: 'POST', headers: getAuthHeader(), body: JSON.stringify({ name }) }).then(handleResponse),
-        updateCategory: (id, name) => fetch(`${BASE_URL}/categories/${id}`, { method: 'PUT', headers: getAuthHeader(), body: JSON.stringify({ name }) }).then(handleResponse),
-        deleteCategory: (id) => fetch(`${BASE_URL}/categories/${id}`, { method: 'DELETE', headers: getAuthHeader() }).then(handleResponse),
-        getTransactions: () => fetch(`${BASE_URL}/transactions/`, { headers: getAuthHeader() }).then(handleResponse),
-        getTransactionById: (id) => fetch(`${BASE_URL}/transactions/${id}`, { headers: getAuthHeader() }).then(handleResponse),
-        createTransaction: (data) => fetch(`${BASE_URL}/transactions/`, { method: 'POST', headers: getAuthHeader(), body: JSON.stringify(data) }).then(handleResponse),
-        updateTransaction: (id, data) => fetch(`${BASE_URL}/transactions/${id}`, { method: 'PUT', headers: getAuthHeader(), body: JSON.stringify(data) }).then(handleResponse),
-        deleteTransaction: (id) => fetch(`${BASE_URL}/transactions/${id}`, { method: 'DELETE', headers: getAuthHeader() }).then(handleResponse)
+        login: (email, password) => apiWithRetry.request(`${BASE_URL}/auth/login`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email, password }) }),
+        register: (name, email, password) => apiWithRetry.request(`${BASE_URL}/auth/register`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, email, password }) }),
+        getCategories: () => apiWithRetry.request(`${BASE_URL}/categories/`, { headers: getAuthHeader() }, 3, true),
+        createCategory: (name) => { cache.invalidate('categories'); return apiWithRetry.request(`${BASE_URL}/categories/`, { method: 'POST', headers: getAuthHeader(), body: JSON.stringify({ name }) }); },
+        updateCategory: (id, name) => { cache.invalidate('categories'); return apiWithRetry.request(`${BASE_URL}/categories/${id}`, { method: 'PUT', headers: getAuthHeader(), body: JSON.stringify({ name }) }); },
+        deleteCategory: (id) => { cache.invalidate('categories'); return apiWithRetry.request(`${BASE_URL}/categories/${id}`, { method: 'DELETE', headers: getAuthHeader() }); },
+        getTransactions: () => apiWithRetry.request(`${BASE_URL}/transactions/`, { headers: getAuthHeader() }, 3, true),
+        getTransactionById: (id) => apiWithRetry.request(`${BASE_URL}/transactions/${id}`, { headers: getAuthHeader() }, 3, true),
+        createTransaction: (data) => { cache.invalidate('transactions'); return apiWithRetry.request(`${BASE_URL}/transactions/`, { method: 'POST', headers: getAuthHeader(), body: JSON.stringify(data) }); },
+        updateTransaction: (id, data) => { cache.invalidate('transactions'); return apiWithRetry.request(`${BASE_URL}/transactions/${id}`, { method: 'PUT', headers: getAuthHeader(), body: JSON.stringify(data) }); },
+        deleteTransaction: (id) => { cache.invalidate('transactions'); return apiWithRetry.request(`${BASE_URL}/transactions/${id}`, { method: 'DELETE', headers: getAuthHeader() }); }
     };
 
     // =================================================================
@@ -143,8 +257,113 @@
     };
 
     // =================================================================
+    // ESTADO CENTRALIZADO DE LA APLICACIÓN
+    // =================================================================
+    const appState = {
+        user: null,
+        categories: [],
+        transactions: [],
+        filteredTransactions: [],
+        filters: { search: '', category: '', type: '', startDate: '', endDate: '' },
+        ui: { 
+            currentPage: 1, 
+            currentCategoryPage: 1, 
+            editingTransactionId: null,
+            loading: false
+        },
+        
+        setState(newState) {
+            Object.assign(this, newState);
+            this.notifySubscribers();
+        },
+        
+        updateFilters(newFilters) {
+            this.filters = { ...this.filters, ...newFilters };
+            this.ui.currentPage = 1; // Reset a primera página
+            this.applyFilters();
+            this.notifySubscribers();
+        },
+        
+        applyFilters() {
+            this.filteredTransactions = this.transactions.filter(t => {
+                const matchesSearch = !this.filters.search || 
+                    t.description.toLowerCase().includes(this.filters.search.toLowerCase());
+                const matchesCategory = !this.filters.category || 
+                    t.category_id === parseInt(this.filters.category);
+                const matchesType = !this.filters.type || t.type === this.filters.type;
+                const date = new Date(t.date);
+                const matchesStartDate = !this.filters.startDate || 
+                    date >= new Date(this.filters.startDate);
+                const matchesEndDate = !this.filters.endDate || 
+                    date <= new Date(this.filters.endDate);
+
+                return matchesSearch && matchesCategory && matchesType && 
+                       matchesStartDate && matchesEndDate;
+            });
+        },
+        
+        subscribers: [],
+        subscribe(callback) {
+            this.subscribers.push(callback);
+        },
+        
+        notifySubscribers() {
+            this.subscribers.forEach(callback => callback(this));
+        }
+    };
+
+    // =================================================================
     // FUNCIONES DE UI (VALIDACIÓN, NOTIFICACIONES, ETC.)
     // =================================================================
+    
+    // Función debounce para optimizar búsquedas
+    const debounce = (func, wait) => {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    };
+
+    // Validadores mejorados
+    const validators = {
+        email: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? null : 'Email inválido',
+        password: (value) => value.length >= 8 ? null : 'Mínimo 8 caracteres',
+        required: (value) => value.trim() ? null : 'Campo obligatorio',
+        amount: (value) => {
+            const num = parseFloat(value);
+            return !isNaN(num) && num > 0 ? null : 'Debe ser un número mayor a 0';
+        },
+        maxLength: (max) => (value) => value.length <= max ? null : `Máximo ${max} caracteres`,
+        uniqueCategory: (categories) => (value) => {
+            const normalizedValue = value.trim().toLowerCase();
+            const existsCategory = categories.some(cat => 
+                cat.name.toLowerCase() === normalizedValue
+            );
+            return existsCategory ? 'Ya existe una categoría con este nombre' : null;
+        },
+        uniqueCategoryEdit: (categories, currentId) => (value) => {
+            const normalizedValue = value.trim().toLowerCase();
+            const existsCategory = categories.some(cat => 
+                cat.name.toLowerCase() === normalizedValue && cat.id !== parseInt(currentId)
+            );
+            return existsCategory ? 'Ya existe una categoría con este nombre' : null;
+        }
+    };
+
+    const validateField = (input, rules) => {
+        for (const rule of rules) {
+            const validator = typeof rule === 'string' ? validators[rule] : rule;
+            const error = validator(input.value);
+            if (error) return error;
+        }
+        return null;
+    };
+
     const showNotification = (message, type = 'success') => {
         document.querySelectorAll('.notification').forEach(n => n.remove());
         const notification = document.createElement('div');
@@ -168,14 +387,15 @@
         form.querySelectorAll('input[required]').forEach(input => {
             input.classList.remove('input-error');
             let error = null;
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!input.value.trim()) {
-                error = 'Este campo es obligatorio.';
-            } else if (input.type === 'email' && !emailRegex.test(input.value)) {
-                error = 'Por favor, introduce un email válido.';
-            } else if (input.type === 'password' && form.id === 'registerForm' && input.value.length < 8) {
-                error = 'La contraseña debe tener al menos 8 caracteres.';
-            }
+            
+            // Usar validadores mejorados
+            const rules = ['required'];
+            if (input.type === 'email') rules.push('email');
+            if (input.type === 'password' && form.id === 'registerForm') rules.push('password');
+            if (input.type === 'number') rules.push('amount');
+            
+            error = validateField(input, rules);
+            
             if (error) {
                 isValid = false;
                 input.classList.add('input-error');
@@ -239,22 +459,14 @@
         const editCategoryIdInput = document.getElementById('edit-category-id');
 
         // --- Filtros ---
-        let filters = {
-            search: '',
-            category: '',
-            type: '',
-            startDate: '',
-            endDate: ''
-        };
-
         const applyFilters = (transactions) => {
             return transactions.filter(t => {
-                const matchesSearch = !filters.search || t.description.toLowerCase().includes(filters.search.toLowerCase());
-                const matchesCategory = !filters.category || t.category_id === parseInt(filters.category);
-                const matchesType = !filters.type || t.type === filters.type;
+                const matchesSearch = !appState.filters.search || t.description.toLowerCase().includes(appState.filters.search.toLowerCase());
+                const matchesCategory = !appState.filters.category || t.category_id === parseInt(appState.filters.category);
+                const matchesType = !appState.filters.type || t.type === appState.filters.type;
                 const date = new Date(t.date);
-                const matchesStartDate = !filters.startDate || date >= new Date(filters.startDate);
-                const matchesEndDate = !filters.endDate || date <= new Date(filters.endDate);
+                const matchesStartDate = !appState.filters.startDate || date >= new Date(appState.filters.startDate);
+                const matchesEndDate = !appState.filters.endDate || date <= new Date(appState.filters.endDate);
 
                 return matchesSearch && matchesCategory && matchesType && matchesStartDate && matchesEndDate;
             });
@@ -408,12 +620,32 @@
 
         const initDashboard = async () => {
             try {
-                const [categories, transactions] = await Promise.all([api.getCategories(), api.getTransactions()]);
+                appState.setState({ ui: { ...appState.ui, loading: true } });
+                
+                const [categories, transactions] = await Promise.all([
+                    api.getCategories(), 
+                    api.getTransactions()
+                ]);
+                
+                // Actualizar estado centralizado
+                appState.setState({
+                    categories,
+                    transactions,
+                    ui: { ...appState.ui, loading: false }
+                });
+                
+                // Aplicar filtros
+                appState.applyFilters();
+                
+                // Renderizar UI
                 renderCategoriesForSelect(categories);
                 renderPaginatedCategories(categories);
-                renderPaginatedTransactions(applyFilters(transactions)); // <-- Aplicar filtros
+                renderPaginatedTransactions(appState.filteredTransactions);
+                
             } catch (error) {
+                appState.setState({ ui: { ...appState.ui, loading: false } });
                 showNotification(error.message, 'error');
+                logger.log('error', 'Dashboard initialization failed', { error: error.message });
             }
         };
         
@@ -501,34 +733,39 @@
             }
         }
 
+        // --- Debounced search para optimizar rendimiento ---
+        const debouncedSearch = debounce((value) => {
+            appState.updateFilters({ search: value });
+            initDashboard();
+        }, 300);
+
         // --- Listeners de filtros ---
         document.getElementById('search-input')?.addEventListener('input', (e) => {
-            filters.search = e.target.value;
-            initDashboard(); // <-- Actualizar tabla
+            debouncedSearch(e.target.value);
         });
 
         document.getElementById('category-filter')?.addEventListener('change', (e) => {
-            filters.category = e.target.value;
+            appState.updateFilters({ category: e.target.value });
             initDashboard();
         });
 
         document.getElementById('type-filter')?.addEventListener('change', (e) => {
-            filters.type = e.target.value;
+            appState.updateFilters({ type: e.target.value });
             initDashboard();
         });
 
         document.getElementById('start-date')?.addEventListener('change', (e) => {
-            filters.startDate = e.target.value;
+            appState.updateFilters({ startDate: e.target.value });
             initDashboard();
         });
 
         document.getElementById('end-date')?.addEventListener('change', (e) => {
-            filters.endDate = e.target.value;
+            appState.updateFilters({ endDate: e.target.value });
             initDashboard();
         });
 
         document.getElementById('clear-filters')?.addEventListener('click', () => {
-            filters = { search: '', category: '', type: '', startDate: '', endDate: '' };
+            appState.updateFilters({ search: '', category: '', type: '', startDate: '', endDate: '' });
             document.getElementById('search-input').value = '';
             document.getElementById('category-filter').value = '';
             document.getElementById('type-filter').value = '';
@@ -585,7 +822,24 @@
                 e.preventDefault();
                 const nameInput = document.getElementById('category-name');
                 const submitButton = categoryForm.querySelector('button[type="submit"]');
+                
+                // Limpiar errores previos
+                nameInput.classList.remove('input-error');
+                categoryForm.querySelectorAll('.error-message').forEach(el => el.remove());
+                
                 if (nameInput.value.trim()) {
+                    // Validar nombre único
+                    const uniqueError = validators.uniqueCategory(appState.categories)(nameInput.value);
+                    if (uniqueError) {
+                        nameInput.classList.add('input-error');
+                        const errorElement = document.createElement('div');
+                        errorElement.className = 'error-message';
+                        errorElement.textContent = uniqueError;
+                        nameInput.parentElement.appendChild(errorElement);
+                        showNotification(uniqueError, 'error');
+                        return;
+                    }
+                    
                     submitButton.classList.add('loading');
                     try {
                         await api.createCategory(nameInput.value.trim());
@@ -599,6 +853,13 @@
                     } finally {
                         submitButton.classList.remove('loading');
                     }
+                } else {
+                    nameInput.classList.add('input-error');
+                    const errorElement = document.createElement('div');
+                    errorElement.className = 'error-message';
+                    errorElement.textContent = 'El nombre es obligatorio';
+                    nameInput.parentElement.appendChild(errorElement);
+                    showNotification('El nombre es obligatorio', 'error');
                 }
             });
         }
@@ -617,8 +878,8 @@
                 
                 submitButton.classList.add('loading');
                 try {
-                    if (editingTransactionId) {
-                        await api.updateTransaction(editingTransactionId, formData);
+                    if (appState.ui.editingTransactionId) {
+                        await api.updateTransaction(appState.ui.editingTransactionId, formData);
                         showNotification('Transacción actualizada.', 'success');
                     } else {
                         await api.createTransaction(formData);
@@ -626,7 +887,7 @@
                     }
                     animationSystem.addSuccessPulse(submitButton);
                     transactionForm.reset();
-                    editingTransactionId = null;
+                    appState.ui.editingTransactionId = null;
                     if (transactionFormTitle) transactionFormTitle.textContent = 'Nueva Transacción';
                     submitButton.textContent = 'Añadir Transacción';
                     initDashboard();
@@ -638,94 +899,84 @@
             });
         }
         
-        // --- Manejo de clics en las tablas (CORREGIDO) ---
-        const setupTableEventListeners = () => {
-            // Para transacciones
-            if (transactionsList) {
-                transactionsList.addEventListener('click', async (e) => {
-                    const target = e.target.closest('.action-btn');
-                    if (!target) return;
+        // --- Manejo de clics en las tablas con Event Delegation (OPTIMIZADO) ---
+        const handleTableClick = async (e) => {
+            const target = e.target.closest('.action-btn');
+            if (!target) return;
 
-                    const id = target.dataset.id;
-                    const row = target.closest('tr');
+            const id = target.dataset.id;
+            const row = target.closest('tr');
+            const isTransactionTable = target.closest('.transactions-table');
+            const isCategoryTable = target.closest('.category-table');
 
-                    if (target.classList.contains('delete-btn')) {
-                        if (confirm('¿Estás seguro de que quieres eliminar esta transacción?')) {
-                            row.style.transform = 'translateX(-100%) scale(0.8)';
-                            row.style.opacity = '0';
-                            row.style.transition = 'all 0.5s ease-out';
-                            try {
-                                await api.deleteTransaction(id);
-                                showNotification('Transacción eliminada.', 'success');
-                                setTimeout(() => initDashboard(), 500);
-                            } catch (error) { 
-                                showNotification(error.message, 'error');
-                                row.style.transform = 'translateX(0) scale(1)';
-                                row.style.opacity = '1';
-                            }
-                        }
-                    } else if (target.classList.contains('edit-btn')) {
-                        target.classList.add('loading');
+            // Manejar transacciones
+            if (isTransactionTable) {
+                if (target.classList.contains('delete-btn')) {
+                    if (confirm('¿Estás seguro de que quieres eliminar esta transacción?')) {
+                        row.style.transform = 'translateX(-100%) scale(0.8)';
+                        row.style.opacity = '0';
+                        row.style.transition = 'all 0.5s ease-out';
                         try {
-                            const tx = await api.getTransactionById(id);
-                            document.getElementById('description').value = tx.description;
-                            document.getElementById('amount').value = tx.amount;
-                            document.getElementById('type').value = tx.type;
-                            document.getElementById('category').value = tx.category_id;
-                            if (transactionFormTitle) transactionFormTitle.textContent = 'Editar Transacción';
-                            const submitButton = transactionForm.querySelector('button[type="submit"]');
-                            submitButton.textContent = 'Guardar Cambios';
-                            editingTransactionId = id;
-                            animationSystem.addMicroBounce(target);
-                            document.querySelector('.menu-item[data-view="view-add-unified"]')?.click();
-                        } catch (error) {
+                            await api.deleteTransaction(id);
+                            showNotification('Transacción eliminada.', 'success');
+                            setTimeout(() => initDashboard(), 500);
+                        } catch (error) { 
                             showNotification(error.message, 'error');
-                        } finally {
-                            target.classList.remove('loading');
+                            row.style.transform = 'translateX(0) scale(1)';
+                            row.style.opacity = '1';
                         }
                     }
-                });
+                } else if (target.classList.contains('edit-btn')) {
+                    target.classList.add('loading');
+                    try {
+                        const tx = await api.getTransactionById(id);
+                        document.getElementById('description').value = tx.description;
+                        document.getElementById('amount').value = tx.amount;
+                        document.getElementById('type').value = tx.type;
+                        document.getElementById('category').value = tx.category_id;
+                        if (transactionFormTitle) transactionFormTitle.textContent = 'Editar Transacción';
+                        const submitButton = transactionForm.querySelector('button[type="submit"]');
+                        submitButton.textContent = 'Guardar Cambios';
+                        appState.ui.editingTransactionId = id;
+                        animationSystem.addMicroBounce(target);
+                        document.querySelector('.menu-item[data-view="view-add-unified"]')?.click();
+                    } catch (error) {
+                        showNotification(error.message, 'error');
+                    } finally {
+                        target.classList.remove('loading');
+                    }
+                }
             }
 
-            // Para categorías
-            if (categoryList) {
-                categoryList.addEventListener('click', async (e) => {
-                    const target = e.target.closest('.action-btn');
-                    if (!target) return;
-
-                    const id = target.dataset.id;
-                    const row = target.closest('tr');
-
-                    if (target.classList.contains('delete-cat-btn')) {
-                        if (confirm('¿Seguro que quieres eliminar esta categoría? (Esto fallará si tiene transacciones asociadas)')) {
-                            row.style.transform = 'translateX(-100%) scale(0.8)';
-                            row.style.opacity = '0';
-                            row.style.transition = 'all 0.5s ease-out';
-                            try {
-                                await api.deleteCategory(id);
-                                showNotification('Categoría eliminada.', 'success');
-                                setTimeout(() => initDashboard(), 500);
-                            } catch (error) { 
-                                showNotification(error.message, 'error');
-                                row.style.transform = 'translateX(0) scale(1)';
-                                row.style.opacity = '1';
-                            }
+            // Manejar categorías
+            if (isCategoryTable) {
+                if (target.classList.contains('delete-cat-btn')) {
+                    if (confirm('¿Seguro que quieres eliminar esta categoría? (Esto fallará si tiene transacciones asociadas)')) {
+                        row.style.transform = 'translateX(-100%) scale(0.8)';
+                        row.style.opacity = '0';
+                        row.style.transition = 'all 0.5s ease-out';
+                        try {
+                            await api.deleteCategory(id);
+                            showNotification('Categoría eliminada.', 'success');
+                            setTimeout(() => initDashboard(), 500);
+                        } catch (error) { 
+                            showNotification(error.message, 'error');
+                            row.style.transform = 'translateX(0) scale(1)';
+                            row.style.opacity = '1';
                         }
-                    } else if (target.classList.contains('edit-cat-btn')) {
-                        // Mostrar modal de edición
-                        const currentName = target.closest('tr').querySelector('td').textContent;
-                        editCategoryIdInput.value = id;
-                        editCategoryNameInput.value = currentName;
-                        openModal(editCategoryModal);
-                        target.classList.add('loading');
-                        animationSystem.addMicroBounce(target);
                     }
-                });
+                } else if (target.classList.contains('edit-cat-btn')) {
+                    const currentName = target.closest('tr').querySelector('td').textContent;
+                    editCategoryIdInput.value = id;
+                    editCategoryNameInput.value = currentName;
+                    openModal(editCategoryModal);
+                    animationSystem.addMicroBounce(target);
+                }
             }
         };
 
-        // Llamar a la función para configurar los listeners
-        setupTableEventListeners();
+        // Usar event delegation en lugar de múltiples listeners
+        document.body.addEventListener('click', handleTableClick);
 
         // --- Editar Categoría (Nuevo Modal) ---
         if (editCategoryModal) {
@@ -741,14 +992,38 @@
             editCategorySubmitBtn.addEventListener('click', async () => {
                 const id = editCategoryIdInput.value;
                 const newName = editCategoryNameInput.value.trim();
+                
+                // Limpiar errores previos
+                editCategoryNameInput.classList.remove('input-error');
+                editCategoryModal.querySelectorAll('.error-message').forEach(el => el.remove());
+                
                 if (!newName) {
+                    editCategoryNameInput.classList.add('input-error');
+                    const errorElement = document.createElement('div');
+                    errorElement.className = 'error-message';
+                    errorElement.textContent = 'El nombre no puede estar vacío';
+                    editCategoryNameInput.parentElement.appendChild(errorElement);
                     showNotification('El nombre no puede estar vacío', 'error');
                     return;
                 }
 
                 const currentName = document.querySelector(`tr[data-id="${id}"] td:first-child`).textContent;
-                if (newName === currentName) {
+                
+                // Verificar si el nombre cambió (comparación insensible a mayúsculas)
+                if (newName.toLowerCase() === currentName.toLowerCase()) {
                     closeModal(editCategoryModal);
+                    return;
+                }
+
+                // Validar nombre único (excluyendo la categoría actual)
+                const uniqueError = validators.uniqueCategoryEdit(appState.categories, id)(newName);
+                if (uniqueError) {
+                    editCategoryNameInput.classList.add('input-error');
+                    const errorElement = document.createElement('div');
+                    errorElement.className = 'error-message';
+                    errorElement.textContent = uniqueError;
+                    editCategoryNameInput.parentElement.appendChild(errorElement);
+                    showNotification(uniqueError, 'error');
                     return;
                 }
 
