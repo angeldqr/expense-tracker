@@ -108,10 +108,17 @@
     // API con retry y cache
     const apiWithRetry = {
         async request(url, options, retries = 3, useCache = false) {
-            const cacheKey = `${url}_${JSON.stringify(options)}`;
+            // Asegurar que las opciones tengan la estructura correcta
+            const requestOptions = {
+                method: options.method || 'GET',
+                headers: options.headers || {},
+                ...(options.body && { body: options.body })
+            };
+            
+            const cacheKey = `${url}_${JSON.stringify(requestOptions)}`;
             
             // Verificar cache para GET requests
-            if (useCache && (!options.method || options.method === 'GET')) {
+            if (useCache && requestOptions.method === 'GET') {
                 const cached = cache.get(cacheKey);
                 if (cached) {
                     logger.log('info', 'Cache hit', { url });
@@ -121,11 +128,11 @@
 
             for (let i = 0; i < retries; i++) {
                 try {
-                    const response = await fetch(url, options);
+                    const response = await fetch(url, requestOptions);
                     const data = await handleResponse(response);
                     
                     // Guardar en cache para GET requests exitosos
-                    if (useCache && (!options.method || options.method === 'GET')) {
+                    if (useCache && requestOptions.method === 'GET') {
                         cache.set(cacheKey, data);
                     }
                     
@@ -149,12 +156,12 @@
     const api = {
         login: (email, password) => apiWithRetry.request(`${BASE_URL}/auth/login`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email, password }) }),
         register: (name, email, password) => apiWithRetry.request(`${BASE_URL}/auth/register`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, email, password }) }),
-        getCategories: () => apiWithRetry.request(`${BASE_URL}/categories/`, { headers: getAuthHeader() }, 3, true),
+        getCategories: () => apiWithRetry.request(`${BASE_URL}/categories/`, { method: 'GET', headers: getAuthHeader() }, 3, true),
         createCategory: (name) => { cache.invalidate('categories'); return apiWithRetry.request(`${BASE_URL}/categories/`, { method: 'POST', headers: getAuthHeader(), body: JSON.stringify({ name }) }); },
         updateCategory: (id, name) => { cache.invalidate('categories'); return apiWithRetry.request(`${BASE_URL}/categories/${id}`, { method: 'PUT', headers: getAuthHeader(), body: JSON.stringify({ name }) }); },
         deleteCategory: (id) => { cache.invalidate('categories'); return apiWithRetry.request(`${BASE_URL}/categories/${id}`, { method: 'DELETE', headers: getAuthHeader() }); },
-        getTransactions: () => apiWithRetry.request(`${BASE_URL}/transactions/`, { headers: getAuthHeader() }, 3, true),
-        getTransactionById: (id) => apiWithRetry.request(`${BASE_URL}/transactions/${id}`, { headers: getAuthHeader() }, 3, true),
+        getTransactions: () => apiWithRetry.request(`${BASE_URL}/transactions/`, { method: 'GET', headers: getAuthHeader() }, 3, true),
+        getTransactionById: (id) => apiWithRetry.request(`${BASE_URL}/transactions/${id}`, { method: 'GET', headers: getAuthHeader() }, 3, true),
         createTransaction: (data) => { cache.invalidate('transactions'); return apiWithRetry.request(`${BASE_URL}/transactions/`, { method: 'POST', headers: getAuthHeader(), body: JSON.stringify(data) }); },
         updateTransaction: (id, data) => { cache.invalidate('transactions'); return apiWithRetry.request(`${BASE_URL}/transactions/${id}`, { method: 'PUT', headers: getAuthHeader(), body: JSON.stringify(data) }); },
         deleteTransaction: (id) => { cache.invalidate('transactions'); return apiWithRetry.request(`${BASE_URL}/transactions/${id}`, { method: 'DELETE', headers: getAuthHeader() }); }
@@ -305,6 +312,18 @@
                 }
 
                 return matchesSearch && matchesCategory && matchesType && matchesMonth && matchesTransactionDate;
+            }).sort((a, b) => {
+                // Ordenar por fecha descendente (más reciente primero)
+                const dateA = new Date(a.transaction_date + 'T00:00:00');
+                const dateB = new Date(b.transaction_date + 'T00:00:00');
+                
+                // Primero comparar por fecha
+                if (dateB.getTime() !== dateA.getTime()) {
+                    return dateB - dateA;
+                }
+                
+                // Si las fechas son iguales, ordenar por ID descendente (más reciente primero)
+                return b.id - a.id;
             });
         },
         
@@ -677,6 +696,7 @@
         const itemsPerPage = 5;
 
         const renderPaginatedTransactions = (transactions) => {
+            // Las transacciones ya vienen ordenadas desde appState.applyFilters()
             const totalPages = Math.ceil(transactions.length / itemsPerPage);
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
@@ -689,21 +709,21 @@
             if (paginationContainer) {
                 paginationContainer.innerHTML = `
                     <button id="prev-page" ${currentPage === 1 ? 'disabled' : ''}>ANTERIOR</button>
-                    <span>Página ${currentPage} de ${totalPages}</span>
-                    <button id="next-page" ${currentPage === totalPages ? 'disabled' : ''}>SIGUIENTE</button>
+                    <span>Página ${currentPage} de ${totalPages || 1}</span>
+                    <button id="next-page" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>SIGUIENTE</button>
                 `;
 
                 document.getElementById('prev-page')?.addEventListener('click', () => {
                     if (currentPage > 1) {
                         currentPage--;
-                        renderPaginatedTransactions(applyFilters(transactions));
+                        renderPaginatedTransactions(transactions);
                     }
                 });
 
                 document.getElementById('next-page')?.addEventListener('click', () => {
                     if (currentPage < totalPages) {
                         currentPage++;
-                        renderPaginatedTransactions(applyFilters(transactions));
+                        renderPaginatedTransactions(transactions);
                     }
                 });
             }
@@ -903,6 +923,400 @@
         // Configurar validación en tiempo real
         setupRealTimeValidation();
 
+        // =================================================================
+        // MÓDULO DEL DASHBOARD
+        // =================================================================
+        const dashboardModule = {
+            chart: null,
+            currentPeriod: 'all', // Guardar el período actual
+            
+            async loadDashboard(period = null) {
+                try {
+                    // Si no se especifica período, usar el guardado
+                    if (period === null) {
+                        period = this.currentPeriod;
+                    } else {
+                        this.currentPeriod = period;
+                    }
+                    
+                    // Actualizar el select con el período actual
+                    const periodSelector = document.getElementById('period-selector');
+                    if (periodSelector && periodSelector.value !== period) {
+                        periodSelector.value = period;
+                    }
+                    
+                    const transactions = await api.getTransactions();
+                    const filteredTransactions = this.filterByPeriod(transactions, period);
+                    this.updateStats(filteredTransactions);
+                    this.updateChart(filteredTransactions);
+                } catch (error) {
+                    showNotification('Error al cargar el dashboard: ' + error.message, 'error');
+                }
+            },
+            
+            filterByPeriod(transactions, period) {
+                const now = new Date();
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+                
+                return transactions.filter(t => {
+                    const txDate = new Date(t.transaction_date + 'T00:00:00');
+                    const txMonth = txDate.getMonth();
+                    const txYear = txDate.getFullYear();
+                    
+                    switch(period) {
+                        case 'current-month':
+                            // Solo filtrar por mes y año actual, sin restricción de día
+                            return txMonth === currentMonth && txYear === currentYear;
+                        case 'last-3-months':
+                            const threeMonthsAgo = new Date(now);
+                            threeMonthsAgo.setMonth(currentMonth - 2);
+                            threeMonthsAgo.setDate(1);
+                            threeMonthsAgo.setHours(0, 0, 0, 0);
+                            return txDate >= threeMonthsAgo;
+                        case 'last-6-months':
+                            const sixMonthsAgo = new Date(now);
+                            sixMonthsAgo.setMonth(currentMonth - 5);
+                            sixMonthsAgo.setDate(1);
+                            sixMonthsAgo.setHours(0, 0, 0, 0);
+                            return txDate >= sixMonthsAgo;
+                        case 'current-year':
+                            return txYear === currentYear;
+                        case 'all':
+                        default:
+                            return true;
+                    }
+                });
+            },
+            
+            updateChart(transactions) {
+                const canvas = document.getElementById('incomeExpenseChart');
+                if (!canvas) return;
+                
+                // Destruir gráfico anterior si existe
+                if (this.chart) {
+                    this.chart.destroy();
+                }
+                
+                // Si no hay transacciones, mostrar mensaje
+                if (transactions.length === 0) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.font = '16px Poppins';
+                    ctx.fillStyle = '#a0aec0';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No hay datos para el período seleccionado', canvas.width / 2, canvas.height / 2);
+                    return;
+                }
+                
+                // Agrupar transacciones por mes
+                const monthlyData = this.groupByMonth(transactions);
+                
+                // Crear gráfico
+                const ctx = canvas.getContext('2d');
+                this.chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: monthlyData.labels,
+                        datasets: [
+                            {
+                                label: 'Ingresos',
+                                data: monthlyData.income,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                pointBackgroundColor: '#10b981',
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2,
+                                pointRadius: 5,
+                                pointHoverRadius: 7
+                            },
+                            {
+                                label: 'Gastos',
+                                data: monthlyData.expenses,
+                                borderColor: '#ef4444',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                pointBackgroundColor: '#ef4444',
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2,
+                                pointRadius: 5,
+                                pointHoverRadius: 7
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    color: '#e2e8f0',
+                                    font: {
+                                        size: 12,
+                                        weight: '600'
+                                    },
+                                    padding: 20,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 15, 27, 0.95)',
+                                titleColor: '#e2e8f0',
+                                bodyColor: '#a0aec0',
+                                borderColor: '#2d3748',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += '$' + context.parsed.y.toLocaleString('es-CO') + ' COP';
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(45, 55, 72, 0.5)',
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: '#a0aec0',
+                                    font: {
+                                        size: 11
+                                    },
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString('es-CO');
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false,
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: '#a0aec0',
+                                    font: {
+                                        size: 11
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            },
+            
+            groupByMonth(transactions) {
+                const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                
+                // Si es mes actual, agrupar por día en lugar de por mes
+                if (this.currentPeriod === 'current-month') {
+                    return this.groupByDay(transactions);
+                }
+                
+                const monthlyData = {};
+                
+                // Determinar el rango de meses según el período actual
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                const currentMonth = now.getMonth(); // 0-11
+                
+                let startDate, endDate;
+                
+                switch(this.currentPeriod) {
+                    case 'last-3-months':
+                        // Últimos 3 meses (incluyendo el actual)
+                        startDate = new Date(currentYear, currentMonth - 2, 1);
+                        endDate = new Date(currentYear, currentMonth, 1);
+                        break;
+                    case 'last-6-months':
+                        // Últimos 6 meses (incluyendo el actual)
+                        startDate = new Date(currentYear, currentMonth - 5, 1);
+                        endDate = new Date(currentYear, currentMonth, 1);
+                        break;
+                    case 'current-year':
+                        // Todo el año actual
+                        startDate = new Date(currentYear, 0, 1);
+                        endDate = new Date(currentYear, currentMonth, 1);
+                        break;
+                    case 'all':
+                    default:
+                        // Determinar rango basado en las transacciones
+                        if (transactions.length === 0) {
+                            // Si no hay transacciones, mostrar el mes actual
+                            startDate = new Date(currentYear, currentMonth, 1);
+                            endDate = new Date(currentYear, currentMonth, 1);
+                        } else {
+                            // Encontrar la fecha más antigua
+                            const dates = transactions.map(t => new Date(t.transaction_date + 'T00:00:00'));
+                            const minDate = new Date(Math.min(...dates));
+                            startDate = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+                            // Hasta el mes actual
+                            endDate = new Date(currentYear, currentMonth, 1);
+                        }
+                        break;
+                }
+                
+                // Inicializar todos los meses en el rango con valores en 0
+                const tempDate = new Date(startDate);
+                while (tempDate <= endDate) {
+                    const year = tempDate.getFullYear();
+                    const month = String(tempDate.getMonth() + 1).padStart(2, '0');
+                    const monthKey = `${year}-${month}`;
+                    monthlyData[monthKey] = { income: 0, expenses: 0 };
+                    tempDate.setMonth(tempDate.getMonth() + 1);
+                }
+                
+                // Agrupar transacciones por mes
+                transactions.forEach(t => {
+                    const month = t.transaction_month; // Ya viene como "YYYY-MM" del backend
+                    if (monthlyData[month]) {
+                        if (t.type === 'income') {
+                            monthlyData[month].income += parseFloat(t.amount);
+                        } else {
+                            monthlyData[month].expenses += parseFloat(t.amount);
+                        }
+                    }
+                });
+                
+                // Ordenar por fecha y formatear
+                const sortedMonths = Object.keys(monthlyData).sort();
+                const labels = sortedMonths.map(month => {
+                    const [year, monthNum] = month.split('-');
+                    return `${monthNames[parseInt(monthNum) - 1]} ${year}`;
+                });
+                
+                const income = sortedMonths.map(month => monthlyData[month].income);
+                const expenses = sortedMonths.map(month => monthlyData[month].expenses);
+                
+                return { labels, income, expenses };
+            },
+            
+            groupByDay(transactions) {
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                const currentMonth = now.getMonth();
+                const currentDay = now.getDate();
+                
+                // Crear un objeto para almacenar datos por día
+                const dailyData = {};
+                
+                // Encontrar el último día con transacciones o el día actual (el que sea mayor)
+                let maxDay = currentDay;
+                transactions.forEach(t => {
+                    const txDate = new Date(t.transaction_date + 'T00:00:00');
+                    if (txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
+                        const txDay = txDate.getDate();
+                        if (txDay > maxDay) {
+                            maxDay = txDay;
+                        }
+                    }
+                });
+                
+                // Inicializar todos los días desde 1 hasta el día máximo
+                for (let day = 1; day <= maxDay; day++) {
+                    const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    dailyData[dateKey] = { income: 0, expenses: 0 };
+                }
+                
+                // Agrupar transacciones por día
+                transactions.forEach(t => {
+                    const date = t.transaction_date; // Ya viene como "YYYY-MM-DD" del backend
+                    if (dailyData[date]) {
+                        if (t.type === 'income') {
+                            dailyData[date].income += parseFloat(t.amount);
+                        } else {
+                            dailyData[date].expenses += parseFloat(t.amount);
+                        }
+                    }
+                });
+                
+                // Ordenar por fecha y formatear
+                const sortedDays = Object.keys(dailyData).sort();
+                const labels = sortedDays.map(date => {
+                    const [year, month, day] = date.split('-');
+                    return `${parseInt(day)}`;
+                });
+                
+                const income = sortedDays.map(date => dailyData[date].income);
+                const expenses = sortedDays.map(date => dailyData[date].expenses);
+                
+                return { labels, income, expenses };
+            },
+            
+            updateStats(transactions) {
+                const income = transactions
+                    .filter(t => t.type === 'income')
+                    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+                
+                const expenses = transactions
+                    .filter(t => t.type === 'expense')
+                    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+                
+                const balance = income - expenses;
+                
+                const incomeCount = transactions.filter(t => t.type === 'income').length;
+                const expenseCount = transactions.filter(t => t.type === 'expense').length;
+                
+                // Actualizar valores
+                const balanceEl = document.getElementById('balance-value');
+                const incomeEl = document.getElementById('income-value');
+                const expenseEl = document.getElementById('expense-value');
+                const totalEl = document.getElementById('total-transactions');
+                
+                if (balanceEl) balanceEl.textContent = this.formatCurrency(balance);
+                if (incomeEl) incomeEl.textContent = this.formatCurrency(income);
+                if (expenseEl) expenseEl.textContent = this.formatCurrency(expenses);
+                if (totalEl) totalEl.textContent = transactions.length;
+                
+                // Actualizar contadores
+                const incomeCountEl = document.getElementById('income-count');
+                const expenseCountEl = document.getElementById('expense-count');
+                
+                if (incomeCountEl) incomeCountEl.textContent = `${incomeCount} transacciones`;
+                if (expenseCountEl) expenseCountEl.textContent = `${expenseCount} transacciones`;
+                
+                // Actualizar tendencia del balance
+                const trendElement = document.getElementById('balance-trend');
+                if (trendElement) {
+                    if (balance > 0) {
+                        trendElement.innerHTML = '<i class="fas fa-arrow-up"></i> Positivo';
+                        trendElement.className = 'stat-trend positive';
+                    } else if (balance < 0) {
+                        trendElement.innerHTML = '<i class="fas fa-arrow-down"></i> Negativo';
+                        trendElement.className = 'stat-trend negative';
+                    } else {
+                        trendElement.innerHTML = '';
+                        trendElement.className = 'stat-trend';
+                    }
+                }
+            },
+            
+            formatCurrency(amount) {
+                return `$${parseFloat(amount).toLocaleString('es-CO', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                })} COP`;
+            }
+        };
+
         // --- Listeners de Animaciones y UI ---
         if (registerBtn) registerBtn.addEventListener('click', () => {
             container.classList.add("active");
@@ -951,13 +1365,20 @@
                     menuItems.forEach(menu => menu.classList.remove('active'));
                     item.classList.add('active');
                     animationSystem.addMicroBounce(item);
+                    
+                    // Si cambiamos a la vista del dashboard, cargar datos (solo si está autenticado)
+                    if (item.dataset.view === 'view-dashboard' && isLoggedIn()) {
+                        dashboardModule.loadDashboard();
+                    }
                 });
             });
-            const initialView = document.querySelector('.menu-item[data-view="view-transactions-list"]');
-            if(initialView) {
+            const initialView = document.querySelector('.menu-item[data-view="view-dashboard"]');
+            if(initialView && isLoggedIn()) {
                  views.forEach(v => v.classList.add('hidden'));
                  document.getElementById(initialView.dataset.view).classList.remove('hidden');
                  initialView.classList.add('active');
+                 // Cargar dashboard al iniciar (solo si está autenticado)
+                 dashboardModule.loadDashboard();
             }
         }
 
@@ -967,6 +1388,25 @@
             appState.applyFilters();
             renderPaginatedTransactions(appState.filteredTransactions);
         }, 300);
+
+        // --- Listeners del selector de período ---
+        const periodSelector = document.getElementById('period-selector');
+        const refreshDashboardBtn = document.getElementById('refresh-dashboard');
+
+        if (periodSelector) {
+            periodSelector.addEventListener('change', (e) => {
+                dashboardModule.loadDashboard(e.target.value);
+            });
+        }
+
+        if (refreshDashboardBtn) {
+            refreshDashboardBtn.addEventListener('click', () => {
+                const period = periodSelector ? periodSelector.value : 'current-month';
+                animationSystem.addMicroBounce(refreshDashboardBtn);
+                dashboardModule.loadDashboard(period);
+                showNotification('Dashboard actualizado', 'success');
+            });
+        }
 
         // --- Listeners de filtros ---
         document.getElementById('search-input')?.addEventListener('input', (e) => {
@@ -1025,13 +1465,20 @@
                         setTimeout(() => loginBtn.click(), 1000);
                     } else {
                         const result = await api.login(data.email, data.password);
-                        saveToken(result.access_token);
-                        showNotification('Inicio de sesión exitoso.', 'success');
-                        animationSystem.addSuccessPulse(submitButton);
-                        setTimeout(showDashboard, 1000);
+                        console.log('Login result:', result); // Debug
+                        if (result.access_token) {
+                            saveToken(result.access_token);
+                            console.log('Token guardado:', localStorage.getItem('access_token')); // Debug
+                            showNotification('Inicio de sesión exitoso.', 'success');
+                            animationSystem.addSuccessPulse(submitButton);
+                            setTimeout(showDashboard, 1000);
+                        } else {
+                            throw new Error('No se recibió el token de acceso');
+                        }
                     }
                     form.reset();
                 } catch (error) {
+                    console.error('Error en autenticación:', error); // Debug
                     showNotification(error.message, 'error');
                 } finally {
                     submitButton.classList.remove('loading');
@@ -1322,6 +1769,6 @@
             }
         });
 
-        console.log(`🚀 Expense Tracker - Atajos: Ctrl+N (Nuevo), Ctrl+L (Lista)`);
+        console.log(`🚀 Expense Tracker - Dashboard activo`);
     });
 })();

@@ -12,6 +12,8 @@
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+     <!-- Chart.js - Librería de gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -89,7 +91,13 @@
             </div>
             <ul class="sidebar-menu">
                 <li>
-                    <a href="#" data-view="view-transactions-list" class="menu-item active">
+                    <a href="#" data-view="view-dashboard" class="menu-item active">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-view="view-transactions-list" class="menu-item">
                         <i class="fas fa-list-ul"></i>
                         <span>Transacciones</span>
                     </a>
@@ -98,12 +106,6 @@
                     <a href="#" data-view="view-add-unified" class="menu-item">
                         <i class="fas fa-plus-circle"></i>
                         <span>Añadir</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" data-view="view-reports" class="menu-item" style="display: none;">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>Reportes</span>
                     </a>
                 </li>
             </ul>
@@ -116,8 +118,85 @@
         </nav>
 
         <main class="main-content">
+            <!-- Vista del Dashboard -->
+            <div id="view-dashboard" class="view">
+                <header class="view-header">
+                    <h2>📊 Dashboard</h2>
+                    <p>Resumen de tus finanzas personales</p>
+                </header>
+
+                <!-- Tarjetas de Resumen -->
+                <section class="stats-cards">
+                    <div class="stat-card balance-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Balance Total</h3>
+                            <p class="stat-value" id="balance-value">$0 COP</p>
+                            <span class="stat-trend" id="balance-trend"></span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card income-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Ingresos</h3>
+                            <p class="stat-value" id="income-value">$0 COP</p>
+                            <span class="stat-subtitle" id="income-count">0 transacciones</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card expense-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Gastos</h3>
+                            <p class="stat-value" id="expense-value">$0 COP</p>
+                            <span class="stat-subtitle" id="expense-count">0 transacciones</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card transactions-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Transacciones</h3>
+                            <p class="stat-value" id="total-transactions">0</p>
+                            <span class="stat-subtitle">Total registradas</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Sección de Gráficos -->
+                <div class="charts-section">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>� Evolución de Ingresos vs Gastos</h3>
+                            <div class="chart-controls">
+                                <select id="period-selector">
+                                    <option value="current-month">Mes actual</option>
+                                    <option value="last-3-months">Últimos 3 meses</option>
+                                    <option value="last-6-months">Últimos 6 meses</option>
+                                    <option value="current-year">Año actual</option>
+                                    <option value="all" selected>Todos</option>
+                                </select>
+                                <button id="refresh-dashboard" class="btn-refresh" title="Actualizar dashboard">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <canvas id="incomeExpenseChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
             <!-- Vista de la Lista de Transacciones -->
-            <div id="view-transactions-list" class="view">
+            <div id="view-transactions-list" class="view hidden">
                 <header class="view-header">
                     <h2>Transacciones Recientes</h2>
                     <p>Gestiona y filtra tus transacciones</p>
@@ -190,7 +269,7 @@
             </div>
 
             <!-- Vista Unificada para Añadir -->
-            <div id="view-add-unified" class="view">
+            <div id="view-add-unified" class="view hidden">
                 <div class="form-grid-container">
                     <!-- Columna Izquierda: Formulario de Transacción -->
                     <section class="dashboard-form-container">
