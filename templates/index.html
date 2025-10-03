@@ -121,7 +121,7 @@
             <!-- Vista del Dashboard -->
             <div id="view-dashboard" class="view">
                 <header class="view-header">
-                    <h2>📊 Dashboard</h2>
+                    <h2>Dashboard</h2>
                     <p>Resumen de tus finanzas personales</p>
                 </header>
 
@@ -172,11 +172,25 @@
                     </div>
                 </section>
 
+                <!-- Alerta de Gastos Elevados -->
+                <div id="spending-alert" class="spending-alert" style="display: none;">
+                    <div class="alert-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="alert-content">
+                        <h4>Alerta de Gastos Elevados</h4>
+                        <p id="alert-message"></p>
+                    </div>
+                    <button id="close-alert" class="close-alert-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
                 <!-- Sección de Gráficos -->
-                <div class="charts-section">
+                <div class="charts-section two-columns">
                     <div class="chart-container">
                         <div class="chart-header">
-                            <h3>� Evolución de Ingresos vs Gastos</h3>
+                            <h3>Evolución de Ingresos vs Gastos</h3>
                             <div class="chart-controls">
                                 <select id="period-selector">
                                     <option value="current-month">Mes actual</option>
@@ -191,6 +205,19 @@
                             </div>
                         </div>
                         <canvas id="incomeExpenseChart"></canvas>
+                    </div>
+
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Gastos por Categoría</h3>
+                        </div>
+                        <div id="doughnut-chart-wrapper">
+                            <canvas id="categoryDoughnutChart"></canvas>
+                        </div>
+                        <div id="no-expenses-message" style="display: none; text-align: center; padding: 3rem; color: var(--secondary-text-clr);">
+                            <i class="fas fa-chart-pie" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+                            <p>No hay gastos registrados para el período seleccionado</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -318,8 +345,8 @@
                                 </label>
                                 <select id="type" name="type" required data-validation="required" aria-describedby="type-help">
                                     <option value="">Selecciona un tipo</option>
-                                    <option value="expense">💸 Gasto</option>
-                                    <option value="income">💰 Ingreso</option>
+                                    <option value="expense">Gasto</option>
+                                    <option value="income">Ingreso</option>
                                 </select>
                                 <small id="type-help" class="field-help">Indica si es un gasto o ingreso</small>
                             </div>

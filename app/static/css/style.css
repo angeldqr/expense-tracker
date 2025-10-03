@@ -2417,4 +2417,143 @@ body.dashboard-active .stars {
     }
 }
 
-/* Responsive Dashboard */
+/* ========================================================================== */
+/* == ALERTA DE GASTOS ELEVADOS =========================================== */
+/* ========================================================================== */
+
+.spending-alert {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
+    border: 2px solid var(--error-color);
+    border-radius: var(--border-radius-normal);
+    margin-bottom: 2rem;
+    position: relative;
+    animation: alertSlideIn 0.5s ease-out;
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.2);
+}
+
+@keyframes alertSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert-icon {
+    width: 50px;
+    height: 50px;
+    background: var(--error-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    flex-shrink: 0;
+    animation: alertPulse 2s infinite;
+}
+
+@keyframes alertPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    }
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-content h4 {
+    color: var(--error-color);
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+}
+
+.alert-content p {
+    color: var(--text-clr);
+    font-size: 0.95rem;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.close-alert-btn {
+    background: transparent;
+    border: none;
+    color: var(--error-color);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.close-alert-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    transform: rotate(90deg);
+}
+
+/* ========================================================================== */
+/* == GRÁFICO DE DONA ====================================================== */
+/* ========================================================================== */
+
+#doughnut-chart-wrapper {
+    position: relative;
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 2rem 0;
+}
+
+#categoryDoughnutChart {
+    max-height: 350px !important;
+}
+
+/* Ajuste para que ambos gráficos tengan altura similar */
+.charts-section.two-columns .chart-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.charts-section.two-columns .chart-container canvas {
+    flex: 1;
+}
+
+/* Responsive para gráficos */
+@media(max-width: 768px) {
+    #doughnut-chart-wrapper {
+        max-width: 100%;
+        padding: 1.5rem 0;
+    }
+    
+    #categoryDoughnutChart {
+        max-height: 300px !important;
+    }
+}
+
+@media(max-width: 480px) {
+    #doughnut-chart-wrapper {
+        padding: 1rem 0;
+    }
+    
+    #categoryDoughnutChart {
+        max-height: 250px !important;
+    }
+}

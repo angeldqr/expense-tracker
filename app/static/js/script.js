@@ -928,7 +928,8 @@
         // =================================================================
         const dashboardModule = {
             chart: null,
-            currentPeriod: 'all', // Guardar el período actual
+            doughnutChart: null,
+            currentPeriod: 'all',
             
             async loadDashboard(period = null) {
                 try {
@@ -949,6 +950,8 @@
                     const filteredTransactions = this.filterByPeriod(transactions, period);
                     this.updateStats(filteredTransactions);
                     this.updateChart(filteredTransactions);
+                    this.updateDoughnutChart(filteredTransactions);
+                    this.checkSpendingAlert(filteredTransactions);
                 } catch (error) {
                     showNotification('Error al cargar el dashboard: ' + error.message, 'error');
                 }
@@ -1218,45 +1221,73 @@
                 // Crear un objeto para almacenar datos por día
                 const dailyData = {};
                 
-                // Encontrar el último día con transacciones o el día actual (el que sea mayor)
+                // PASO 1: Encontrar el día máximo entre HOY y el último día con transacciones
                 let maxDay = currentDay;
+                
                 transactions.forEach(t => {
                     const txDate = new Date(t.transaction_date + 'T00:00:00');
-                    if (txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
+                    const txYear = txDate.getFullYear();
+                    const txMonth = txDate.getMonth();
+                    
+                    // Solo considerar transacciones del mes y año actual
+                    if (txYear === currentYear && txMonth === currentMonth) {
                         const txDay = txDate.getDate();
                         if (txDay > maxDay) {
-                            maxDay = txDay;
+                            maxDay = txDay; // Extender hasta el día con transacciones
                         }
                     }
                 });
                 
-                // Inicializar todos los días desde 1 hasta el día máximo
+                // PASO 2: Inicializar todos los días desde el 1 hasta el día máximo
                 for (let day = 1; day <= maxDay; day++) {
                     const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                     dailyData[dateKey] = { income: 0, expenses: 0 };
                 }
                 
-                // Agrupar transacciones por día
+                // PASO 3: Llenar los datos con las transacciones del mes actual
                 transactions.forEach(t => {
-                    const date = t.transaction_date; // Ya viene como "YYYY-MM-DD" del backend
-                    if (dailyData[date]) {
-                        if (t.type === 'income') {
-                            dailyData[date].income += parseFloat(t.amount);
-                        } else {
-                            dailyData[date].expenses += parseFloat(t.amount);
+                    const txDate = new Date(t.transaction_date + 'T00:00:00');
+                    const txYear = txDate.getFullYear();
+                    const txMonth = txDate.getMonth();
+                    
+                    // Solo procesar transacciones del mes y año actual
+                    if (txYear === currentYear && txMonth === currentMonth) {
+                        const date = t.transaction_date; // Formato YYYY-MM-DD
+                        
+                        // Agregar la transacción al día correspondiente
+                        if (dailyData[date]) {
+                            if (t.type === 'income') {
+                                dailyData[date].income += parseFloat(t.amount);
+                            } else {
+                                dailyData[date].expenses += parseFloat(t.amount);
+                            }
                         }
                     }
                 });
                 
-                // Ordenar por fecha y formatear
+                // PASO 4: Ordenar los días y formatear para la gráfica
                 const sortedDays = Object.keys(dailyData).sort();
+                
+                // Formatear labels (solo mostrar el número del día)
                 const labels = sortedDays.map(date => {
                     const [year, month, day] = date.split('-');
                     return `${parseInt(day)}`;
                 });
                 
+                // Extraer arrays de ingresos y gastos
                 const income = sortedDays.map(date => dailyData[date].income);
                 const expenses = sortedDays.map(date => dailyData[date].expenses);
+                
+                console.log('📊 Datos diarios generados:', {
+                    period: 'Mes actual',
+                    totalDays: sortedDays.length,
+                    rangoFinal: `Día 1 hasta día ${maxDay}`,
+                    labels: labels,
+                    income: income,
+                    expenses: expenses,
+                    currentDay: currentDay,
+                    maxDay: maxDay
+                });
                 
                 return { labels, income, expenses };
             },
@@ -1306,6 +1337,144 @@
                         trendElement.innerHTML = '';
                         trendElement.className = 'stat-trend';
                     }
+                }
+            },
+            
+            updateDoughnutChart(transactions) {
+                const canvas = document.getElementById('categoryDoughnutChart');
+                const noExpensesMsg = document.getElementById('no-expenses-message');
+                const chartWrapper = document.getElementById('doughnut-chart-wrapper');
+                
+                if (!canvas) return;
+                
+                if (this.doughnutChart) {
+                    this.doughnutChart.destroy();
+                }
+                
+                const expenses = transactions.filter(t => t.type === 'expense');
+                
+                if (expenses.length === 0) {
+                    if (chartWrapper) chartWrapper.style.display = 'none';
+                    if (noExpensesMsg) noExpensesMsg.style.display = 'block';
+                    return;
+                }
+                
+                if (chartWrapper) chartWrapper.style.display = 'block';
+                if (noExpensesMsg) noExpensesMsg.style.display = 'none';
+                
+                // Agrupar gastos por categoría
+                const categoryData = {};
+                expenses.forEach(t => {
+                    const categoryName = t.category_name || 'Sin categoría';
+                    if (!categoryData[categoryName]) {
+                        categoryData[categoryName] = 0;
+                    }
+                    categoryData[categoryName] += parseFloat(t.amount);
+                });
+                
+                // Ordenar por monto descendente
+                const sortedCategories = Object.entries(categoryData)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 8); // Top 8 categorías
+                
+                const labels = sortedCategories.map(([name]) => name);
+                const data = sortedCategories.map(([, amount]) => amount);
+                
+                // Colores vibrantes para el gráfico
+                const colors = [
+                    '#ef4444', '#f59e0b', '#10b981', '#3b82f6',
+                    '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'
+                ];
+                
+                const ctx = canvas.getContext('2d');
+                this.doughnutChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderColor: '#1a202c',
+                            borderWidth: 3,
+                            hoverOffset: 15
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: '#e2e8f0',
+                                    font: { size: 11, weight: '600' },
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 15, 27, 0.95)',
+                                titleColor: '#e2e8f0',
+                                bodyColor: '#a0aec0',
+                                borderColor: '#2d3748',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${label}: $${value.toLocaleString('es-CO')} COP (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '65%',
+                        animation: { animateRotate: true, animateScale: true }
+                    }
+                });
+            },
+            
+            checkSpendingAlert(transactions) {
+                const alertContainer = document.getElementById('spending-alert');
+                const alertMessage = document.getElementById('alert-message');
+                const closeAlertBtn = document.getElementById('close-alert');
+                
+                if (!alertContainer || !alertMessage) return;
+                
+                const income = transactions
+                    .filter(t => t.type === 'income')
+                    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+                
+                const expenses = transactions
+                    .filter(t => t.type === 'expense')
+                    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+                
+                const alertClosed = sessionStorage.getItem('alert_closed');
+                
+                if (income > 0 && expenses > 0 && !alertClosed) {
+                    const percentage = (expenses / income) * 100;
+                    
+                    if (percentage >= 80) {
+                        const formattedPercentage = percentage.toFixed(1);
+                        alertMessage.textContent = `Has gastado ${formattedPercentage}% de tus ingresos. Te recomendamos revisar tus gastos para mantener un balance saludable.`;
+                        alertContainer.style.display = 'flex';
+                        
+                        if (closeAlertBtn && !closeAlertBtn.hasAttribute('data-listener')) {
+                            closeAlertBtn.setAttribute('data-listener', 'true');
+                            closeAlertBtn.addEventListener('click', () => {
+                                alertContainer.style.display = 'none';
+                                sessionStorage.setItem('alert_closed', 'true');
+                            });
+                        }
+                    } else {
+                        alertContainer.style.display = 'none';
+                    }
+                } else if (alertClosed) {
+                    alertContainer.style.display = 'none';
                 }
             },
             
@@ -1366,7 +1535,6 @@
                     item.classList.add('active');
                     animationSystem.addMicroBounce(item);
                     
-                    // Si cambiamos a la vista del dashboard, cargar datos (solo si está autenticado)
                     if (item.dataset.view === 'view-dashboard' && isLoggedIn()) {
                         dashboardModule.loadDashboard();
                     }
@@ -1377,7 +1545,6 @@
                  views.forEach(v => v.classList.add('hidden'));
                  document.getElementById(initialView.dataset.view).classList.remove('hidden');
                  initialView.classList.add('active');
-                 // Cargar dashboard al iniciar (solo si está autenticado)
                  dashboardModule.loadDashboard();
             }
         }
@@ -1433,7 +1600,6 @@
 
         document.getElementById('transaction-date-filter')?.addEventListener('change', (e) => {
             appState.updateFilters({ transactionDate: e.target.value });
-            // Aplicar filtros inmediatamente en lugar de reinicializar todo
             appState.applyFilters();
             renderPaginatedTransactions(appState.filteredTransactions);
         });
@@ -1465,10 +1631,8 @@
                         setTimeout(() => loginBtn.click(), 1000);
                     } else {
                         const result = await api.login(data.email, data.password);
-                        console.log('Login result:', result); // Debug
                         if (result.access_token) {
                             saveToken(result.access_token);
-                            console.log('Token guardado:', localStorage.getItem('access_token')); // Debug
                             showNotification('Inicio de sesión exitoso.', 'success');
                             animationSystem.addSuccessPulse(submitButton);
                             setTimeout(showDashboard, 1000);
@@ -1478,7 +1642,6 @@
                     }
                     form.reset();
                 } catch (error) {
-                    console.error('Error en autenticación:', error); // Debug
                     showNotification(error.message, 'error');
                 } finally {
                     submitButton.classList.remove('loading');
@@ -1499,7 +1662,6 @@
         if (categoryModal) categoryModal.addEventListener('click', (e) => { if (e.target === categoryModal) closeModal(categoryModal); });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && categoryModal.classList.contains('show')) closeModal(categoryModal); });
 
-        // Botón cancelar en modal de crear categoría
         document.getElementById('cancel-category-btn')?.addEventListener('click', () => closeModal(categoryModal));
 
         if (categoryForm) {
@@ -1508,12 +1670,10 @@
                 const nameInput = document.getElementById('category-name');
                 const submitButton = categoryForm.querySelector('button[type="submit"]');
                 
-                // Limpiar errores previos
                 nameInput.classList.remove('input-error');
                 categoryForm.querySelectorAll('.error-message').forEach(el => el.remove());
                 
                 if (nameInput.value.trim()) {
-                    // Validar nombre único
                     const uniqueError = validators.uniqueCategory(appState.categories)(nameInput.value);
                     if (uniqueError) {
                         nameInput.classList.add('input-error');
@@ -1585,7 +1745,6 @@
             });
         }
         
-        // --- Manejo de clics en las tablas con Event Delegation (OPTIMIZADO) ---
         const handleTableClick = async (e) => {
             const target = e.target.closest('.action-btn');
             if (!target) return;
@@ -1595,7 +1754,6 @@
             const isTransactionTable = target.closest('.transactions-table');
             const isCategoryTable = target.closest('.category-table');
 
-            // Manejar transacciones
             if (isTransactionTable) {
                 if (target.classList.contains('delete-btn')) {
                     if (confirm('¿Estás seguro de que quieres eliminar esta transacción?')) {
@@ -1620,10 +1778,9 @@
                         document.getElementById('amount').value = tx.amount;
                         document.getElementById('type').value = tx.type;
                         document.getElementById('category').value = tx.category_id;
-                        // Usar transaction_date del backend
                         const dateInput = document.getElementById('transaction-date');
                         if (dateInput && tx.transaction_date) {
-                            dateInput.value = tx.transaction_date; // Ya viene en formato YYYY-MM-DD
+                            dateInput.value = tx.transaction_date;
                         }
                         if (transactionFormTitle) transactionFormTitle.textContent = 'Editar Transacción';
                         const submitButton = transactionForm.querySelector('button[type="submit"]');
@@ -1639,7 +1796,6 @@
                 }
             }
 
-            // Manejar categorías
             if (isCategoryTable) {
                 if (target.classList.contains('delete-cat-btn')) {
                     if (confirm('¿Seguro que quieres eliminar esta categoría? (Esto fallará si tiene transacciones asociadas)')) {
@@ -1666,10 +1822,8 @@
             }
         };
 
-        // Usar event delegation en lugar de múltiples listeners
         document.body.addEventListener('click', handleTableClick);
 
-        // --- Editar Categoría (Nuevo Modal) ---
         if (editCategoryModal) {
             editCategoryModal.addEventListener('click', (e) => { if (e.target === editCategoryModal) closeModal(editCategoryModal); });
             document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && editCategoryModal.classList.contains('show')) closeModal(editCategoryModal); });
@@ -1684,7 +1838,6 @@
                 const id = editCategoryIdInput.value;
                 const newName = editCategoryNameInput.value.trim();
                 
-                // Limpiar errores previos
                 editCategoryNameInput.classList.remove('input-error');
                 editCategoryModal.querySelectorAll('.error-message').forEach(el => el.remove());
                 
@@ -1700,13 +1853,11 @@
 
                 const currentName = document.querySelector(`tr[data-id="${id}"] td:first-child`).textContent;
                 
-                // Verificar si el nombre cambió (comparación insensible a mayúsculas)
                 if (newName.toLowerCase() === currentName.toLowerCase()) {
                     closeModal(editCategoryModal);
                     return;
                 }
 
-                // Validar nombre único (excluyendo la categoría actual)
                 const uniqueError = validators.uniqueCategoryEdit(appState.categories, id)(newName);
                 if (uniqueError) {
                     editCategoryNameInput.classList.add('input-error');
@@ -1722,20 +1873,19 @@
                 submitButton.classList.add('loading');
                 try {
                     await api.updateCategory(id, newName);
-                    
-                    // Actualizar el estado en tiempo real
                     appState.updateCategoryName(id, newName);
-                    
                     showNotification('Categoría actualizada.', 'success');
                     animationSystem.addSuccessPulse(submitButton);
                     closeModal(editCategoryModal);
-                    
-                    // Re-renderizar elementos afectados
                     renderCategoriesForSelect(appState.categories);
                     populateCategoryFilter(appState.categories);
                     renderPaginatedTransactions(appState.filteredTransactions);
                     renderPaginatedCategories(appState.categories);
                     
+                    // Actualizar SOLO el gráfico de dona en tiempo real con los datos del estado local
+                    const currentPeriod = document.getElementById('period-selector')?.value || 'all';
+                    const filteredTransactions = dashboardModule.filterByPeriod(appState.transactions, currentPeriod);
+                    dashboardModule.updateDoughnutChart(filteredTransactions);
                 } catch (error) {
                     showNotification(error.message, 'error');
                 } finally {
@@ -1744,7 +1894,6 @@
             });
         }
 
-        // --- Easter egg y Atajos de Teclado ---
         let konamiCode = [];
         const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
         document.addEventListener('keydown', (e) => {
@@ -1753,7 +1902,7 @@
             if (konamiCode.join('') === konamiSequence.join('')) {
                 document.body.style.transition = 'filter 1s';
                 document.body.style.filter = 'hue-rotate(360deg)';
-                showNotification('¡Código Konami activado! 🌈', 'success');
+                showNotification('Código Konami activado', 'success');
                 setTimeout(() => document.body.style.filter = '', 1000);
             }
             if (!document.body.classList.contains('dashboard-active')) return;
