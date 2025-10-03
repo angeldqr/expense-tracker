@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 💰 Expense Tracker
 
 **Aplicación web profesional para gestión de gastos e ingresos personales**
@@ -372,3 +373,6 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más det
 ---
 
 **¡Disfruta gestionando tus finanzas personales!** 💰✨
+=======
+# expense-tracker
+>>>>>>> 3eeb9b6e4824336ffe8e46d4c8700ba0285354fa
