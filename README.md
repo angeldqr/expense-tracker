@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 💰 Expense Tracker
 
 **Aplicación web profesional para gestión de gastos e ingresos personales**
