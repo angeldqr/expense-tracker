@@ -15,7 +15,7 @@ Esta rama `demo` incluye una funcionalidad especial para permitir que los visita
 
 ### Para los Usuarios
 
-1. En la página de inicio de sesión, verán un botón **"Probar Modo Demo"** 
+1. En la página de inicio de sesión, verán un botón **"Probar Modo Demo"**
 2. Al hacer clic, obtienen acceso inmediato a la aplicación con datos de ejemplo
 3. Pueden explorar todas las funcionalidades sin crear una cuenta
 

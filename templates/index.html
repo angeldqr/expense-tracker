@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expense Tracker</title>
-    
+
     <!-- Carga de fuentes desde Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
      <!-- Chart.js - Librería de gráficos -->
@@ -237,17 +237,17 @@
                     <h2>Transacciones Recientes</h2>
                     <p>Gestiona y filtra tus transacciones</p>
                 </header>
-                
+
                 <!-- Panel de Filtros Mejorado -->
                 <section class="filters-panel" aria-label="Filtros de transacciones">
                     <div class="filters-row">
                         <div class="filter-group">
                             <label for="search-input">Buscar</label>
-                            <input type="search" id="search-input" placeholder="Buscar por descripción..." 
+                            <input type="search" id="search-input" placeholder="Buscar por descripción..."
                                    autocomplete="off" aria-describedby="search-help">
                             <small id="search-help" class="filter-help">Busca por descripción de la transacción</small>
                         </div>
-                        
+
                         <div class="filter-group">
                             <label for="category-filter">Categoría</label>
                             <select id="category-filter" aria-describedby="category-help">
@@ -255,7 +255,7 @@
                             </select>
                             <small id="category-help" class="filter-help">Filtra por categoría específica</small>
                         </div>
-                        
+
                         <div class="filter-group">
                             <label for="type-filter">Tipo</label>
                             <select id="type-filter" aria-describedby="type-help">
@@ -265,7 +265,7 @@
                             </select>
                             <small id="type-help" class="filter-help">Filtra por tipo de transacción</small>
                         </div>
-                        
+
                         <div class="filter-group">
                             <label for="month-filter">Mes</label>
                             <select id="month-filter" aria-describedby="month-help">
@@ -279,7 +279,7 @@
                             <input type="date" id="transaction-date-filter" aria-describedby="date-filter-help">
                             <small id="date-filter-help" class="filter-help">Filtra por fecha específica de transacción</small>
                         </div>
-                        
+
                         <div class="filter-actions">
                             <button type="button" id="clear-filters" class="btn-clear-filters" aria-label="Limpiar todos los filtros">
                                 <i class="fas fa-eraser"></i>
@@ -298,7 +298,7 @@
                 <!-- Lista de Transacciones -->
                 <section class="data-section" aria-label="Lista de transacciones">
                     <div id="transactions-list" role="region" aria-live="polite" aria-label="Tabla de transacciones"></div>
-                    
+
                     <!-- Paginación Mejorada -->
                     <nav id="pagination-controls" class="pagination-controls" aria-label="Navegación de páginas" role="navigation"></nav>
                 </section>
@@ -316,37 +316,37 @@
                                     Descripción
                                     <span class="required-indicator" aria-label="Campo obligatorio">*</span>
                                 </label>
-                                <input type="text" id="description" name="description" 
-                                       placeholder="Ej: Compra de supermercado" 
-                                       required maxlength="255" 
+                                <input type="text" id="description" name="description"
+                                       placeholder="Ej: Compra de supermercado"
+                                       required maxlength="255"
                                        data-validation="required,maxLength(255)"
                                        aria-describedby="description-help">
                                 <small id="description-help" class="field-help">Describe brevemente la transacción</small>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="amount">
                                     Monto (COP)
                                     <span class="required-indicator" aria-label="Campo obligatorio">*</span>
                                 </label>
-                                <input type="number" id="amount" name="amount" 
-                                       placeholder="0" step="0.01" min="0.01" 
+                                <input type="number" id="amount" name="amount"
+                                       placeholder="0" step="0.01" min="0.01"
                                        required data-validation="required,amount"
                                        aria-describedby="amount-help">
                                 <small id="amount-help" class="field-help">Ingresa el valor en pesos colombianos</small>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="transaction-date">
                                     Fecha de la transacción
                                     <span class="required-indicator" aria-label="Campo obligatorio">*</span>
                                 </label>
-                                <input type="date" id="transaction-date" name="transaction_date" 
+                                <input type="date" id="transaction-date" name="transaction_date"
                                        required data-validation="required"
                                        aria-describedby="transaction-date-help">
                                 <small id="transaction-date-help" class="field-help">¿Cuándo realizaste esta transacción?</small>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="type">
                                     Tipo de transacción
@@ -359,25 +359,25 @@
                                 </select>
                                 <small id="type-help" class="field-help">Indica si es un gasto o ingreso</small>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="category">
                                     Categoría
                                     <span class="required-indicator" aria-label="Campo obligatorio">*</span>
                                 </label>
                                 <div class="category-input-group">
-                                    <select id="category" name="category_id" required 
+                                    <select id="category" name="category_id" required
                                             data-validation="required" aria-describedby="category-help">
                                         <option value="">Selecciona una categoría</option>
                                     </select>
-                                    <button type="button" id="add-category-btn" class="add-category-button" 
+                                    <button type="button" id="add-category-btn" class="add-category-button"
                                             aria-label="Añadir nueva categoría" title="Crear nueva categoría">
                                         <i class="fas fa-plus"></i>
                                     </button>
                                 </div>
                                 <small id="category-help" class="field-help">Elige o crea una categoría para organizar tus transacciones</small>
                             </div>
-                            
+
                             <div class="form-actions">
                                 <button type="submit" class="btn-primary" id="transaction-submit-btn">
                                     <i class="fas fa-plus-circle"></i>
@@ -418,9 +418,9 @@
                             Nombre de la categoría
                             <span class="required-indicator" aria-label="Campo obligatorio">*</span>
                         </label>
-                        <input type="text" id="category-name" name="name" 
-                               placeholder="Ej: Restaurantes, Transporte, Salud..." 
-                               required maxlength="50" 
+                        <input type="text" id="category-name" name="name"
+                               placeholder="Ej: Restaurantes, Transporte, Salud..."
+                               required maxlength="50"
                                data-validation="required,maxLength(50),uniqueCategory"
                                aria-describedby="category-name-help">
                         <small id="category-name-help" class="field-help">Crea una categoría para organizar tus transacciones</small>
@@ -453,9 +453,9 @@
                             Nombre de la categoría
                             <span class="required-indicator" aria-label="Campo obligatorio">*</span>
                         </label>
-                        <input type="text" id="edit-category-name" name="name" 
-                               placeholder="Ej: Restaurantes, Transporte, Salud..." 
-                               required maxlength="50" 
+                        <input type="text" id="edit-category-name" name="name"
+                               placeholder="Ej: Restaurantes, Transporte, Salud..."
+                               required maxlength="50"
                                data-validation="required,maxLength(50),uniqueCategoryEdit"
                                aria-describedby="edit-category-name-help">
                         <small id="edit-category-name-help" class="field-help">Modifica el nombre de la categoría</small>

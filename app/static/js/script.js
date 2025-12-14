@@ -5,8 +5,8 @@
     // MÓDULO INTERNO DE API Y AUTENTICACIÓN
     // =================================================================
     // Usar URL dinámica para que funcione en desarrollo y producción
-    const BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? 'http://127.0.0.1:5000' 
+    const BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://127.0.0.1:5000'
         : window.location.origin;
     const TOKEN_KEY = 'access_token';
 
@@ -29,12 +29,12 @@
         data: new Map(),
         timestamps: new Map(),
         TTL: 5 * 60 * 1000, // 5 minutos
-        
+
         set(key, value) {
             this.data.set(key, value);
             this.timestamps.set(key, Date.now());
         },
-        
+
         get(key) {
             const timestamp = this.timestamps.get(key);
             if (!timestamp || Date.now() - timestamp > this.TTL) {
@@ -44,7 +44,7 @@
             }
             return this.data.get(key);
         },
-        
+
         invalidate(pattern) {
             for (const key of this.data.keys()) {
                 if (key.includes(pattern)) {
@@ -65,14 +65,14 @@
         log(level, message, data = {}) {
             const timestamp = new Date().toISOString();
             const logEntry = { timestamp, level, message, data };
-            
+
             console[level](`[${timestamp}] ${message}`, data);
-            
+
             if (level === 'error') {
                 this.reportError(logEntry);
             }
         },
-        
+
         reportError(logEntry) {
             // En producción, enviar a servicio de logging
             try {
@@ -85,12 +85,12 @@
             }
         }
     };
-    
+
     const handleResponse = async (response) => {
         try {
             const data = await response.json();
             if (!response.ok) {
-                if (response.status === 401 && data.msg === "Token has expired") { 
+                if (response.status === 401 && data.msg === "Token has expired") {
                     showNotification('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.', 'error');
                     setTimeout(logout, 2000);
                 }
@@ -117,9 +117,9 @@
                 headers: options.headers || {},
                 ...(options.body && { body: options.body })
             };
-            
+
             const cacheKey = `${url}_${JSON.stringify(requestOptions)}`;
-            
+
             // Verificar cache para GET requests
             if (useCache && requestOptions.method === 'GET') {
                 const cached = cache.get(cacheKey);
@@ -133,18 +133,18 @@
                 try {
                     const response = await fetch(url, requestOptions);
                     const data = await handleResponse(response);
-                    
+
                     // Guardar en cache para GET requests exitosos
                     if (useCache && requestOptions.method === 'GET') {
                         cache.set(cacheKey, data);
                     }
-                    
+
                     return data;
                 } catch (error) {
                     logger.log('warn', `API request failed (attempt ${i + 1})`, { url, error: error.message });
-                    
+
                     if (i === retries - 1) throw error;
-                    
+
                     // Solo reintentar en errores de red
                     if (error.message.includes('fetch') || error.message.includes('Network')) {
                         await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
@@ -175,7 +175,7 @@
     // =================================================================
     const animationSystem = {
         observer: null,
-        
+
         init() {
             this.observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
@@ -185,7 +185,7 @@
                     }
                 });
             }, { threshold: 0.1 });
-            
+
             this.injectAdvancedStyles();
         },
 
@@ -275,33 +275,33 @@
         transactions: [],
         filteredTransactions: [],
         filters: { search: '', category: '', type: '', month: '', transactionDate: '' },
-        ui: { 
-            currentPage: 1, 
-            currentCategoryPage: 1, 
+        ui: {
+            currentPage: 1,
+            currentCategoryPage: 1,
             editingTransactionId: null,
             loading: false
         },
-        
+
         setState(newState) {
             Object.assign(this, newState);
             this.notifySubscribers();
         },
-        
+
         updateFilters(newFilters) {
             this.filters = { ...this.filters, ...newFilters };
             this.ui.currentPage = 1; // Reset a primera página
             this.applyFilters();
             this.notifySubscribers();
         },
-        
+
         applyFilters() {
             this.filteredTransactions = this.transactions.filter(t => {
-                const matchesSearch = !this.filters.search || 
+                const matchesSearch = !this.filters.search ||
                     t.description.toLowerCase().includes(this.filters.search.toLowerCase());
-                const matchesCategory = !this.filters.category || 
+                const matchesCategory = !this.filters.category ||
                     t.category_id === parseInt(this.filters.category);
                 const matchesType = !this.filters.type || t.type === this.filters.type;
-                
+
                 // Usar transaction_date del backend (ya viene en formato YYYY-MM-DD)
                 let matchesTransactionDate = true;
                 if (this.filters.transactionDate) {
@@ -319,24 +319,24 @@
                 // Ordenar por fecha descendente (más reciente primero)
                 const dateA = new Date(a.transaction_date + 'T00:00:00');
                 const dateB = new Date(b.transaction_date + 'T00:00:00');
-                
+
                 // Primero comparar por fecha
                 if (dateB.getTime() !== dateA.getTime()) {
                     return dateB - dateA;
                 }
-                
+
                 // Si las fechas son iguales, ordenar por ID descendente (más reciente primero)
                 return b.id - a.id;
             });
         },
-        
+
         updateCategoryName(categoryId, newName) {
             // Actualizar el nombre en el array de categorías
             const categoryIndex = this.categories.findIndex(cat => cat.id === parseInt(categoryId));
             if (categoryIndex !== -1) {
                 this.categories[categoryIndex].name = newName;
             }
-            
+
             // Actualizar el nombre en todas las transacciones que usan esta categoría
             this.transactions = this.transactions.map(transaction => {
                 if (transaction.category_id === parseInt(categoryId)) {
@@ -347,7 +347,7 @@
                 }
                 return transaction;
             });
-            
+
             // Actualizar también las transacciones filtradas
             this.filteredTransactions = this.filteredTransactions.map(transaction => {
                 if (transaction.category_id === parseInt(categoryId)) {
@@ -358,16 +358,16 @@
                 }
                 return transaction;
             });
-            
+
             this.notifySubscribers();
         },
-        
+
         subscribers: [],
-        
+
         subscribe(callback) {
             this.subscribers.push(callback);
         },
-        
+
         notifySubscribers() {
             this.subscribers.forEach(callback => callback(this));
         }
@@ -376,7 +376,7 @@
     // =================================================================
     // FUNCIONES DE UI (VALIDACIÓN, NOTIFICACIONES, ETC.)
     // =================================================================
-    
+
     // Función debounce para optimizar búsquedas
     const debounce = (func, wait) => {
         let timeout;
@@ -402,14 +402,14 @@
         maxLength: (max) => (value) => value.length <= max ? null : `Máximo ${max} caracteres`,
         uniqueCategory: (categories) => (value) => {
             const normalizedValue = value.trim().toLowerCase();
-            const existsCategory = categories.some(cat => 
+            const existsCategory = categories.some(cat =>
                 cat.name.toLowerCase() === normalizedValue
             );
             return existsCategory ? 'Ya existe una categoría con este nombre' : null;
         },
         uniqueCategoryEdit: (categories, currentId) => (value) => {
             const normalizedValue = value.trim().toLowerCase();
-            const existsCategory = categories.some(cat => 
+            const existsCategory = categories.some(cat =>
                 cat.name.toLowerCase() === normalizedValue && cat.id !== parseInt(currentId)
             );
             return existsCategory ? 'Ya existe una categoría con este nombre' : null;
@@ -431,11 +431,11 @@
         notification.className = `notification ${type}`;
         notification.textContent = message;
         document.body.appendChild(notification);
-        
+
         requestAnimationFrame(() => {
             notification.classList.add('show');
         });
-        
+
         setTimeout(() => {
             notification.classList.remove('show');
             notification.addEventListener('transitionend', () => notification.remove());
@@ -448,15 +448,15 @@
         form.querySelectorAll('input[required]').forEach(input => {
             input.classList.remove('input-error');
             let error = null;
-            
+
             // Usar validadores mejorados
             const rules = ['required'];
             if (input.type === 'email') rules.push('email');
             if (input.type === 'password' && form.id === 'registerForm') rules.push('password');
             if (input.type === 'number') rules.push('amount');
-            
+
             error = validateField(input, rules);
-            
+
             if (error) {
                 isValid = false;
                 input.classList.add('input-error');
@@ -489,7 +489,7 @@
     // =================================================================
     // FUNCIONES AUXILIARES PARA NUEVA ESTRUCTURA HTML
     // =================================================================
-    
+
     // Mostrar/ocultar loading state
     const showLoadingState = (show) => {
         const loadingElement = document.getElementById('transactions-loading');
@@ -514,14 +514,14 @@
         if (categoryFilter) {
             const currentValue = categoryFilter.value;
             categoryFilter.innerHTML = '<option value="">Todas las categorías</option>';
-            
+
             categories.forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat.id;
                 option.textContent = cat.name;
                 categoryFilter.appendChild(option);
             });
-            
+
             if (currentValue) categoryFilter.value = currentValue;
         }
     };
@@ -532,10 +532,10 @@
         if (monthFilter) {
             const currentValue = monthFilter.value;
             monthFilter.innerHTML = '<option value="">Todos los meses</option>';
-            
+
             // Obtener meses únicos usando transaction_month del backend
             const months = [...new Set(transactions.map(t => t.transaction_month))].sort().reverse();
-            
+
             months.forEach(month => {
                 const option = document.createElement('option');
                 option.value = month;
@@ -548,7 +548,7 @@
                 option.textContent = `${monthNames[parseInt(monthNum) - 1]} ${year}`;
                 monthFilter.appendChild(option);
             });
-            
+
             if (currentValue) monthFilter.value = currentValue;
         }
     };
@@ -565,7 +565,7 @@
     // Validación en tiempo real para formularios
     const setupRealTimeValidation = () => {
         const inputs = document.querySelectorAll('input[data-validation], select[data-validation]');
-        
+
         inputs.forEach(input => {
             input.addEventListener('blur', () => validateInputField(input));
             input.addEventListener('input', () => {
@@ -582,7 +582,7 @@
 
         const rules = validationRules.split(',').map(rule => rule.trim());
         const container = input.parentElement;
-        
+
         // Limpiar errores previos
         container.querySelectorAll('.error-message').forEach(el => el.remove());
         input.classList.remove('input-error');
@@ -625,7 +625,7 @@
     const setButtonLoading = (button, loading) => {
         const btnText = button.querySelector('.btn-text');
         const btnLoading = button.querySelector('.btn-loading');
-        
+
         if (btnText && btnLoading) {
             btnText.style.display = loading ? 'none' : 'inline';
             btnLoading.style.display = loading ? 'inline-flex' : 'none';
@@ -638,7 +638,7 @@
                 button.textContent = button.dataset.originalText || button.textContent;
             }
         }
-        
+
         button.disabled = loading;
         if (loading) {
             button.classList.add('loading');
@@ -786,11 +786,11 @@
                 if(selectedValue) categorySelect.value = selectedValue;
             }
         };
-        
+
         const renderCategoryList = (categories = []) => {
             if (!categoryList) return;
             showSkeletonLoader(categoryList, categories.length || 3, 2);
-            
+
             setTimeout(() => {
                 categoryList.innerHTML = '';
                 if (categories.length === 0) {
@@ -813,7 +813,7 @@
         const renderTransactions = (transactions = []) => {
             if (!transactionsList) return;
             showSkeletonLoader(transactionsList, transactions.length || 5, 6);
-            
+
             setTimeout(() => {
                 transactionsList.innerHTML = '';
                 if (transactions.length === 0) {
@@ -827,10 +827,10 @@
                             ${transactions.map(t => {
                                 // Usar transaction_date del backend (formato YYYY-MM-DD)
                                 const transactionDate = new Date(t.transaction_date + 'T00:00:00');
-                                const formattedDate = transactionDate.toLocaleDateString('es-ES', { 
-                                    day: '2-digit', 
-                                    month: 'short', 
-                                    year: 'numeric' 
+                                const formattedDate = transactionDate.toLocaleDateString('es-ES', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric'
                                 });
                                 return `
                                 <tr data-id="${t.id}">
@@ -853,42 +853,42 @@
         const initDashboard = async () => {
             try {
                 appState.setState({ ui: { ...appState.ui, loading: true } });
-                
+
                 // Mostrar loading state
                 showLoadingState(true);
-                
+
                 const [categories, transactions] = await Promise.all([
-                    api.getCategories(), 
+                    api.getCategories(),
                     api.getTransactions()
                 ]);
-                
+
                 // Actualizar estado centralizado
                 appState.setState({
                     categories,
                     transactions,
                     ui: { ...appState.ui, loading: false }
                 });
-                
+
                 // Poblar filtro de categorías
                 populateCategoryFilter(categories);
-                
+
                 // Poblar filtro de meses
                 populateMonthFilter(transactions);
-                
+
                 // Establecer fecha por defecto en formulario
                 setDefaultTransactionDate();
-                
+
                 // Aplicar filtros
                 appState.applyFilters();
-                
+
                 // Renderizar UI
                 renderCategoriesForSelect(categories);
                 renderPaginatedCategories(categories);
                 renderPaginatedTransactions(appState.filteredTransactions);
-                
+
                 // Ocultar loading state
                 showLoadingState(false);
-                
+
             } catch (error) {
                 appState.setState({ ui: { ...appState.ui, loading: false } });
                 showLoadingState(false);
@@ -896,7 +896,7 @@
                 logger.log('error', 'Dashboard initialization failed', { error: error.message });
             }
         };
-        
+
         const showDashboard = () => {
             authView.style.display = 'none';
             dashboardView.style.display = 'flex';
@@ -908,7 +908,7 @@
             }, 100);
             initDashboard();
         };
-        
+
         const showAuth = () => {
             authView.style.display = 'block';
             dashboardView.style.display = 'none';
@@ -933,7 +933,7 @@
             chart: null,
             doughnutChart: null,
             currentPeriod: 'all',
-            
+
             async loadDashboard(period = null) {
                 try {
                     // Si no se especifica período, usar el guardado
@@ -942,13 +942,13 @@
                     } else {
                         this.currentPeriod = period;
                     }
-                    
+
                     // Actualizar el select con el período actual
                     const periodSelector = document.getElementById('period-selector');
                     if (periodSelector && periodSelector.value !== period) {
                         periodSelector.value = period;
                     }
-                    
+
                     const transactions = await api.getTransactions();
                     const filteredTransactions = this.filterByPeriod(transactions, period);
                     this.updateStats(filteredTransactions);
@@ -959,17 +959,17 @@
                     showNotification('Error al cargar el dashboard: ' + error.message, 'error');
                 }
             },
-            
+
             filterByPeriod(transactions, period) {
                 const now = new Date();
                 const currentMonth = now.getMonth();
                 const currentYear = now.getFullYear();
-                
+
                 return transactions.filter(t => {
                     const txDate = new Date(t.transaction_date + 'T00:00:00');
                     const txMonth = txDate.getMonth();
                     const txYear = txDate.getFullYear();
-                    
+
                     switch(period) {
                         case 'current-month':
                             // Solo filtrar por mes y año actual, sin restricción de día
@@ -994,16 +994,16 @@
                     }
                 });
             },
-            
+
             updateChart(transactions) {
                 const canvas = document.getElementById('incomeExpenseChart');
                 if (!canvas) return;
-                
+
                 // Destruir gráfico anterior si existe
                 if (this.chart) {
                     this.chart.destroy();
                 }
-                
+
                 // Si no hay transacciones, mostrar mensaje
                 if (transactions.length === 0) {
                     const ctx = canvas.getContext('2d');
@@ -1014,10 +1014,10 @@
                     ctx.fillText('No hay datos para el período seleccionado', canvas.width / 2, canvas.height / 2);
                     return;
                 }
-                
+
                 // Agrupar transacciones por mes
                 const monthlyData = this.groupByMonth(transactions);
-                
+
                 // Crear gráfico
                 const ctx = canvas.getContext('2d');
                 this.chart = new Chart(ctx, {
@@ -1128,24 +1128,24 @@
                     }
                 });
             },
-            
+
             groupByMonth(transactions) {
                 const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-                
+
                 // Si es mes actual, agrupar por día en lugar de por mes
                 if (this.currentPeriod === 'current-month') {
                     return this.groupByDay(transactions);
                 }
-                
+
                 const monthlyData = {};
-                
+
                 // Determinar el rango de meses según el período actual
                 const now = new Date();
                 const currentYear = now.getFullYear();
                 const currentMonth = now.getMonth(); // 0-11
-                
+
                 let startDate, endDate;
-                
+
                 switch(this.currentPeriod) {
                     case 'last-3-months':
                         // Últimos 3 meses (incluyendo el actual)
@@ -1179,7 +1179,7 @@
                         }
                         break;
                 }
-                
+
                 // Inicializar todos los meses en el rango con valores en 0
                 const tempDate = new Date(startDate);
                 while (tempDate <= endDate) {
@@ -1189,7 +1189,7 @@
                     monthlyData[monthKey] = { income: 0, expenses: 0 };
                     tempDate.setMonth(tempDate.getMonth() + 1);
                 }
-                
+
                 // Agrupar transacciones por mes
                 transactions.forEach(t => {
                     const month = t.transaction_month; // Ya viene como "YYYY-MM" del backend
@@ -1201,37 +1201,37 @@
                         }
                     }
                 });
-                
+
                 // Ordenar por fecha y formatear
                 const sortedMonths = Object.keys(monthlyData).sort();
                 const labels = sortedMonths.map(month => {
                     const [year, monthNum] = month.split('-');
                     return `${monthNames[parseInt(monthNum) - 1]} ${year}`;
                 });
-                
+
                 const income = sortedMonths.map(month => monthlyData[month].income);
                 const expenses = sortedMonths.map(month => monthlyData[month].expenses);
-                
+
                 return { labels, income, expenses };
             },
-            
+
             groupByDay(transactions) {
                 const now = new Date();
                 const currentYear = now.getFullYear();
                 const currentMonth = now.getMonth();
                 const currentDay = now.getDate();
-                
+
                 // Crear un objeto para almacenar datos por día
                 const dailyData = {};
-                
+
                 // PASO 1: Encontrar el día máximo entre HOY y el último día con transacciones
                 let maxDay = currentDay;
-                
+
                 transactions.forEach(t => {
                     const txDate = new Date(t.transaction_date + 'T00:00:00');
                     const txYear = txDate.getFullYear();
                     const txMonth = txDate.getMonth();
-                    
+
                     // Solo considerar transacciones del mes y año actual
                     if (txYear === currentYear && txMonth === currentMonth) {
                         const txDay = txDate.getDate();
@@ -1240,23 +1240,23 @@
                         }
                     }
                 });
-                
+
                 // PASO 2: Inicializar todos los días desde el 1 hasta el día máximo
                 for (let day = 1; day <= maxDay; day++) {
                     const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                     dailyData[dateKey] = { income: 0, expenses: 0 };
                 }
-                
+
                 // PASO 3: Llenar los datos con las transacciones del mes actual
                 transactions.forEach(t => {
                     const txDate = new Date(t.transaction_date + 'T00:00:00');
                     const txYear = txDate.getFullYear();
                     const txMonth = txDate.getMonth();
-                    
+
                     // Solo procesar transacciones del mes y año actual
                     if (txYear === currentYear && txMonth === currentMonth) {
                         const date = t.transaction_date; // Formato YYYY-MM-DD
-                        
+
                         // Agregar la transacción al día correspondiente
                         if (dailyData[date]) {
                             if (t.type === 'income') {
@@ -1267,20 +1267,20 @@
                         }
                     }
                 });
-                
+
                 // PASO 4: Ordenar los días y formatear para la gráfica
                 const sortedDays = Object.keys(dailyData).sort();
-                
+
                 // Formatear labels (solo mostrar el número del día)
                 const labels = sortedDays.map(date => {
                     const [year, month, day] = date.split('-');
                     return `${parseInt(day)}`;
                 });
-                
+
                 // Extraer arrays de ingresos y gastos
                 const income = sortedDays.map(date => dailyData[date].income);
                 const expenses = sortedDays.map(date => dailyData[date].expenses);
-                
+
                 console.log('📊 Datos diarios generados:', {
                     period: 'Mes actual',
                     totalDays: sortedDays.length,
@@ -1291,42 +1291,42 @@
                     currentDay: currentDay,
                     maxDay: maxDay
                 });
-                
+
                 return { labels, income, expenses };
             },
-            
+
             updateStats(transactions) {
                 const income = transactions
                     .filter(t => t.type === 'income')
                     .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-                
+
                 const expenses = transactions
                     .filter(t => t.type === 'expense')
                     .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-                
+
                 const balance = income - expenses;
-                
+
                 const incomeCount = transactions.filter(t => t.type === 'income').length;
                 const expenseCount = transactions.filter(t => t.type === 'expense').length;
-                
+
                 // Actualizar valores
                 const balanceEl = document.getElementById('balance-value');
                 const incomeEl = document.getElementById('income-value');
                 const expenseEl = document.getElementById('expense-value');
                 const totalEl = document.getElementById('total-transactions');
-                
+
                 if (balanceEl) balanceEl.textContent = this.formatCurrency(balance);
                 if (incomeEl) incomeEl.textContent = this.formatCurrency(income);
                 if (expenseEl) expenseEl.textContent = this.formatCurrency(expenses);
                 if (totalEl) totalEl.textContent = transactions.length;
-                
+
                 // Actualizar contadores
                 const incomeCountEl = document.getElementById('income-count');
                 const expenseCountEl = document.getElementById('expense-count');
-                
+
                 if (incomeCountEl) incomeCountEl.textContent = `${incomeCount} transacciones`;
                 if (expenseCountEl) expenseCountEl.textContent = `${expenseCount} transacciones`;
-                
+
                 // Actualizar tendencia del balance
                 const trendElement = document.getElementById('balance-trend');
                 if (trendElement) {
@@ -1342,29 +1342,29 @@
                     }
                 }
             },
-            
+
             updateDoughnutChart(transactions) {
                 const canvas = document.getElementById('categoryDoughnutChart');
                 const noExpensesMsg = document.getElementById('no-expenses-message');
                 const chartWrapper = document.getElementById('doughnut-chart-wrapper');
-                
+
                 if (!canvas) return;
-                
+
                 if (this.doughnutChart) {
                     this.doughnutChart.destroy();
                 }
-                
+
                 const expenses = transactions.filter(t => t.type === 'expense');
-                
+
                 if (expenses.length === 0) {
                     if (chartWrapper) chartWrapper.style.display = 'none';
                     if (noExpensesMsg) noExpensesMsg.style.display = 'block';
                     return;
                 }
-                
+
                 if (chartWrapper) chartWrapper.style.display = 'block';
                 if (noExpensesMsg) noExpensesMsg.style.display = 'none';
-                
+
                 // Agrupar gastos por categoría
                 const categoryData = {};
                 expenses.forEach(t => {
@@ -1374,21 +1374,21 @@
                     }
                     categoryData[categoryName] += parseFloat(t.amount);
                 });
-                
+
                 // Ordenar por monto descendente
                 const sortedCategories = Object.entries(categoryData)
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, 8); // Top 8 categorías
-                
+
                 const labels = sortedCategories.map(([name]) => name);
                 const data = sortedCategories.map(([, amount]) => amount);
-                
+
                 // Colores vibrantes para el gráfico
                 const colors = [
                     '#ef4444', '#f59e0b', '#10b981', '#3b82f6',
                     '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'
                 ];
-                
+
                 const ctx = canvas.getContext('2d');
                 this.doughnutChart = new Chart(ctx, {
                     type: 'doughnut',
@@ -1440,32 +1440,32 @@
                     }
                 });
             },
-            
+
             checkSpendingAlert(transactions) {
                 const alertContainer = document.getElementById('spending-alert');
                 const alertMessage = document.getElementById('alert-message');
                 const closeAlertBtn = document.getElementById('close-alert');
-                
+
                 if (!alertContainer || !alertMessage) return;
-                
+
                 const income = transactions
                     .filter(t => t.type === 'income')
                     .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-                
+
                 const expenses = transactions
                     .filter(t => t.type === 'expense')
                     .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-                
+
                 const alertClosed = sessionStorage.getItem('alert_closed');
-                
+
                 if (income > 0 && expenses > 0 && !alertClosed) {
                     const percentage = (expenses / income) * 100;
-                    
+
                     if (percentage >= 80) {
                         const formattedPercentage = percentage.toFixed(1);
                         alertMessage.textContent = `Has gastado ${formattedPercentage}% de tus ingresos. Te recomendamos revisar tus gastos para mantener un balance saludable.`;
                         alertContainer.style.display = 'flex';
-                        
+
                         if (closeAlertBtn && !closeAlertBtn.hasAttribute('data-listener')) {
                             closeAlertBtn.setAttribute('data-listener', 'true');
                             closeAlertBtn.addEventListener('click', () => {
@@ -1480,7 +1480,7 @@
                     alertContainer.style.display = 'none';
                 }
             },
-            
+
             formatCurrency(amount) {
                 return `$${parseFloat(amount).toLocaleString('es-CO', {
                     minimumFractionDigits: 0,
@@ -1494,12 +1494,12 @@
             container.classList.add("active");
             animationSystem.addMicroBounce(registerBtn);
         });
-        
+
         if (loginBtn) loginBtn.addEventListener('click', () => {
             container.classList.remove("active");
             animationSystem.addMicroBounce(loginBtn);
         });
-        
+
         if (container) {
             container.addEventListener('mousemove', (event) => {
                 const rect = container.getBoundingClientRect();
@@ -1507,7 +1507,7 @@
                 container.style.setProperty('--mouse-y', `${event.clientY - rect.top}px`);
             });
         }
-        
+
         allButtons.forEach(button => {
             button.addEventListener('mousedown', (e) => {
                 const rect = button.getBoundingClientRect();
@@ -1523,7 +1523,7 @@
             menuItems.forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.preventDefault();
-                    
+
                     const currentActiveView = document.querySelector('.view:not(.hidden)');
                     const targetView = document.getElementById(item.dataset.view);
 
@@ -1537,7 +1537,7 @@
                     menuItems.forEach(menu => menu.classList.remove('active'));
                     item.classList.add('active');
                     animationSystem.addMicroBounce(item);
-                    
+
                     if (item.dataset.view === 'view-dashboard' && isLoggedIn()) {
                         dashboardModule.loadDashboard();
                     }
@@ -1656,22 +1656,22 @@
 
         if (registerForm) registerForm.addEventListener('submit', handleAuthFormSubmit);
         if (loginForm) loginForm.addEventListener('submit', handleAuthFormSubmit);
-        
+
         // Handler para el modo demo
         const handleDemoMode = async () => {
             const demoButtons = document.querySelectorAll('#demoModeBtn, #demoModeBtn2, #demoModeBtn3');
             demoButtons.forEach(btn => {
                 if (btn) btn.classList.add('loading');
             });
-            
+
             try {
                 const response = await fetch(`${BASE_URL}/demo/access`, {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
-                
+
                 const data = await handleResponse(response);
-                
+
                 if (data.access_token) {
                     saveToken(data.access_token);
                     showNotification(data.message || '¡Bienvenido al modo demo!', 'success');
@@ -1687,13 +1687,13 @@
                 });
             }
         };
-        
+
         // Event listeners para botones de demo
         const demoBtns = document.querySelectorAll('#demoModeBtn, #demoModeBtn2, #demoModeBtn3');
         demoBtns.forEach(btn => {
             if (btn) btn.addEventListener('click', handleDemoMode);
         });
-        
+
         const openModal = (modal) => { if (modal) modal.classList.add('show'); };
         const closeModal = (modal) => { if (modal) modal.classList.remove('show'); };
 
@@ -1709,10 +1709,10 @@
                 e.preventDefault();
                 const nameInput = document.getElementById('category-name');
                 const submitButton = categoryForm.querySelector('button[type="submit"]');
-                
+
                 nameInput.classList.remove('input-error');
                 categoryForm.querySelectorAll('.error-message').forEach(el => el.remove());
-                
+
                 if (nameInput.value.trim()) {
                     const uniqueError = validators.uniqueCategory(appState.categories)(nameInput.value);
                     if (uniqueError) {
@@ -1724,7 +1724,7 @@
                         showNotification(uniqueError, 'error');
                         return;
                     }
-                    
+
                     submitButton.classList.add('loading');
                     try {
                         await api.createCategory(nameInput.value.trim());
@@ -1748,8 +1748,8 @@
                 }
             });
         }
-        
-        let editingTransactionId = null; 
+
+        let editingTransactionId = null;
         if (transactionForm) {
             transactionForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -1761,7 +1761,7 @@
                     category_id: categorySelect.value,
                     transaction_date: document.getElementById('transaction-date').value,
                 };
-                
+
                 submitButton.classList.add('loading');
                 try {
                     if (appState.ui.editingTransactionId) {
@@ -1784,7 +1784,7 @@
                 }
             });
         }
-        
+
         const handleTableClick = async (e) => {
             const target = e.target.closest('.action-btn');
             if (!target) return;
@@ -1804,7 +1804,7 @@
                             await api.deleteTransaction(id);
                             showNotification('Transacción eliminada.', 'success');
                             setTimeout(() => initDashboard(), 500);
-                        } catch (error) { 
+                        } catch (error) {
                             showNotification(error.message, 'error');
                             row.style.transform = 'translateX(0) scale(1)';
                             row.style.opacity = '1';
@@ -1846,7 +1846,7 @@
                             await api.deleteCategory(id);
                             showNotification('Categoría eliminada.', 'success');
                             setTimeout(() => initDashboard(), 500);
-                        } catch (error) { 
+                        } catch (error) {
                             showNotification(error.message, 'error');
                             row.style.transform = 'translateX(0) scale(1)';
                             row.style.opacity = '1';
@@ -1877,10 +1877,10 @@
             editCategorySubmitBtn.addEventListener('click', async () => {
                 const id = editCategoryIdInput.value;
                 const newName = editCategoryNameInput.value.trim();
-                
+
                 editCategoryNameInput.classList.remove('input-error');
                 editCategoryModal.querySelectorAll('.error-message').forEach(el => el.remove());
-                
+
                 if (!newName) {
                     editCategoryNameInput.classList.add('input-error');
                     const errorElement = document.createElement('div');
@@ -1892,7 +1892,7 @@
                 }
 
                 const currentName = document.querySelector(`tr[data-id="${id}"] td:first-child`).textContent;
-                
+
                 if (newName.toLowerCase() === currentName.toLowerCase()) {
                     closeModal(editCategoryModal);
                     return;
@@ -1921,7 +1921,7 @@
                     populateCategoryFilter(appState.categories);
                     renderPaginatedTransactions(appState.filteredTransactions);
                     renderPaginatedCategories(appState.categories);
-                    
+
                     // Actualizar SOLO el gráfico de dona en tiempo real con los datos del estado local
                     const currentPeriod = document.getElementById('period-selector')?.value || 'all';
                     const filteredTransactions = dashboardModule.filterByPeriod(appState.transactions, currentPeriod);

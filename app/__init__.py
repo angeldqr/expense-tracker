@@ -15,7 +15,7 @@ bcrypt = Bcrypt()
 def create_app(config_class=Config):
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     TEMPLATE_FOLDER = os.path.join(PROJECT_ROOT, 'templates')
-    
+
     app = Flask(__name__, template_folder=TEMPLATE_FOLDER)
     app.config.from_object(config_class)
 
@@ -23,28 +23,28 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     jwt.init_app(app)
     bcrypt.init_app(app)
-    
+
     # Configurar CORS para permitir requests desde cualquier origen
     CORS(app, resources={r"/*": {"origins": "*"}})
 
     # --- REGISTRO DE BLUEPRINTS ---
     from .routes.auth import auth_bp
     app.register_blueprint(auth_bp)
-    
+
     from .routes.transactions import transactions_bp
     app.register_blueprint(transactions_bp)
-    
+
     from .routes.categories import categories_bp
     app.register_blueprint(categories_bp)
-    
+
     # NUEVO BLUEPRINT DE ESTADÍSTICAS
     from .routes.stats import stats_bp
     app.register_blueprint(stats_bp)
-    
+
     # BLUEPRINT DE DEMO
     from .routes.demo import demo_bp
     app.register_blueprint(demo_bp)
-    
+
     # --- RUTA PRINCIPAL PARA EL FRONTEND ---
     @app.route('/')
     def index():

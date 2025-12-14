@@ -8,7 +8,7 @@
     --text-clr: #e2e8f0;
     --accent-clr: #6366f1;
     --secondary-text-clr: #a0aec0;
-    
+
     /* Enhanced Palette for Expense Tracker */
     --primary-color: #6366f1;
     --secondary-color: #4f46e5;
@@ -47,7 +47,7 @@
 html {
     font-family: 'Poppins', 'Montserrat', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.5rem;
-    overflow-x: hidden; 
+    overflow-x: hidden;
 }
 
 /* ========================================================================== */
@@ -75,7 +75,7 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: 
+    background-image:
         radial-gradient(circle at 15% 25%, var(--accent-clr), transparent 40%),
         radial-gradient(circle at 85% 75%, var(--secondary-color), transparent 40%);
     opacity: 0.1;
@@ -157,7 +157,7 @@ h1 {
     letter-spacing: 0.5px;
 }
 
-.toggle h1 { 
+.toggle h1 {
     color: var(--text-clr);
 }
 
@@ -171,7 +171,7 @@ p {
     max-width: 320px;
 }
 
-.toggle p { 
+.toggle p {
     color: var(--text-clr);
 }
 
@@ -185,8 +185,8 @@ a {
     font-weight: 500;
 }
 
-a:hover { 
-    color: var(--text-clr); 
+a:hover {
+    color: var(--text-clr);
 }
 
 button {
@@ -715,11 +715,11 @@ body.dashboard-active .stars {
 /* --- Main Content Area --- */
 .main-content {
     flex-grow: 1;
-    padding: 2.5rem; 
+    padding: 2.5rem;
     overflow-y: auto;
     overflow-x: hidden;
     background: var(--base-clr);
-    position: relative; 
+    position: relative;
 }
 
 .main-content .view {
@@ -1010,16 +1010,16 @@ body.dashboard-active .stars {
 }
 
 .category-input-group select {
-    flex-grow: 1; 
+    flex-grow: 1;
     width: auto;
 }
 
 .add-category-button {
-    flex-shrink: 0; 
-    width: 44px; 
-    height: 44px; 
-    padding: 0; 
-    margin: 0; 
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    margin: 0;
     font-size: 1rem;
     border-radius: var(--border-radius-normal);
     background: var(--line-clr);
@@ -1113,14 +1113,14 @@ body.dashboard-active .stars {
     background-color: rgba(99, 102, 241, 0.05);
 }
 
-.amount.income { 
-    color: var(--success-color); 
-    font-weight: 600; 
+.amount.income {
+    color: var(--success-color);
+    font-weight: 600;
 }
 
-.amount.expense { 
-    color: var(--error-color); 
-    font-weight: 600; 
+.amount.expense {
+    color: var(--error-color);
+    font-weight: 600;
 }
 
 /* --- Action Buttons --- */
@@ -1414,17 +1414,17 @@ body.dashboard-active .stars {
     #dashboard-view {
         display: block;
     }
-    
+
     .main-content {
         padding: 2em 1em 80px 1em;
     }
-    
+
     .dashboard-form-container, .dashboard-data-container {
         border: none;
         padding: 1em;
         margin: 0 0 1em 0;
     }
-    
+
     .sidebar {
         height: 60px;
         width: 100%;
@@ -1438,11 +1438,11 @@ body.dashboard-active .stars {
         flex-direction: row;
         z-index: 1000;
     }
-    
+
     .sidebar-header {
         display: none;
     }
-    
+
     .sidebar-menu {
         padding: 0;
         display: flex;
@@ -1451,13 +1451,13 @@ body.dashboard-active .stars {
         width: 100%;
         height: 100%;
     }
-    
+
     .sidebar-menu li {
         height: 100%;
         margin: 0;
         flex-grow: 1;
     }
-    
+
     .menu-item {
         width: 100%;
         height: 100%;
@@ -1468,16 +1468,16 @@ body.dashboard-active .stars {
         gap: 0.2rem;
         font-size: 0.7rem;
     }
-    
+
     .menu-item span {
         font-size: 0.6rem;
         text-align: center;
     }
-    
+
     .menu-item i {
         font-size: 1.2rem;
     }
-    
+
     .menu-badge {
         position: absolute;
         top: 5px;
@@ -1487,55 +1487,55 @@ body.dashboard-active .stars {
         min-width: 15px;
         height: 15px;
     }
-    
+
     .sidebar-footer {
         display: none;
     }
-        
+
     .container {
         width: 95vw;
         height: 90vh;
         min-height: 600px;
     }
-    
+
     form {
         padding: 0 40px;
     }
-    
+
     .social-icons a {
         width: 45px;
         height: 45px;
         margin: 0 8px;
     }
-    
+
     .toggle-panel {
         padding: 0 30px;
     }
-    
+
     h1 {
         font-size: 2.2em;
     }
-    
+
     p {
         font-size: 14px;
         margin: 20px 0;
     }
-    
+
     button {
         padding: 16px 50px;
         font-size: 12px;
     }
-    
+
     input {
         padding: 16px 20px;
         font-size: 14px;
     }
-    
+
     .input-container label {
         left: 20px;
         font-size: 14px;
     }
-    
+
     input:focus + label,
     input:not(:placeholder-shown) + label {
         left: 20px;
@@ -1547,74 +1547,74 @@ body.dashboard-active .stars {
     body {
         padding: 20px;
     }
-    
+
     .container {
         width: 100vw;
         height: 100vh;
         border-radius: 20px;
     }
-    
+
     form {
         padding: 0 30px;
     }
-    
+
     .toggle-panel {
         padding: 0 25px;
     }
-    
+
     h1 {
         font-size: 1.8em;
     }
-    
+
     .main-content {
         padding: 1em 0.5em 80px 0.5em;
     }
-    
+
     .view-header h2 {
         font-size: 1.5rem;
     }
-    
+
     .view-header p {
         font-size: 0.9rem;
     }
-    
+
     .filters-panel {
         padding: 1rem;
         margin-bottom: 1rem;
     }
-    
+
     .filters-row {
         grid-template-columns: 1fr;
         gap: 0.5rem;
     }
-    
+
     .filter-group input,
     .filter-group select {
         padding: 0.6rem;
         font-size: 0.85rem;
     }
-    
+
     .loading-state {
         padding: 2rem 1rem;
         margin: 1rem 0;
     }
-    
+
     .loading-spinner {
         width: 30px;
         height: 30px;
     }
-    
+
     .form-actions {
         flex-direction: column;
         gap: 0.8rem;
     }
-    
+
     .btn-primary,
     .btn-secondary {
         width: 100%;
         justify-content: center;
     }
-    
+
     .transactions-table th,
     .transactions-table td,
     .category-table th,
@@ -1622,7 +1622,7 @@ body.dashboard-active .stars {
         padding: 0.5rem;
         font-size: 0.8rem;
     }
-    
+
     .action-btn {
         padding: 0.4rem 0.6rem;
         font-size: 0.7rem;
@@ -1882,7 +1882,7 @@ body.dashboard-active .stars {
         gap: 0.3rem;
         justify-content: center;
     }
-    
+
     .pagination-controls .pagination-info {
         order: 3;
         width: 100%;
@@ -1890,24 +1890,24 @@ body.dashboard-active .stars {
         font-size: 0.8rem;
         min-width: auto;
     }
-    
+
     .pagination-numbers {
         margin: 0 0.5rem;
     }
-    
+
     .pagination-numbers button {
         min-width: 30px;
         padding: 0.5rem 0.3rem;
         font-size: 0.8rem;
     }
-    
+
     .pagination-controls .btn-prev,
     .pagination-controls .btn-next {
         padding: 0.5rem 0.8rem;
         font-size: 0.8rem;
         min-width: 70px;
     }
-    
+
     .pagination-size-selector {
         order: 4;
         margin: 0.5rem 0 0 0;
@@ -1919,28 +1919,28 @@ body.dashboard-active .stars {
     .pagination-controls {
         padding: 0.5rem 0;
     }
-    
+
     .pagination-controls button {
         padding: 0.4rem 0.6rem;
         font-size: 0.75rem;
         height: 35px;
     }
-    
+
     .pagination-numbers {
         display: none; /* Ocultar números en pantallas muy pequeñas */
     }
-    
+
     .pagination-controls .btn-first,
     .pagination-controls .btn-last {
         display: none; /* Ocultar botones first/last en móvil */
     }
-    
+
     .pagination-controls .btn-prev,
     .pagination-controls .btn-next {
         min-width: 60px;
         padding: 0.4rem 0.6rem;
     }
-    
+
     .pagination-controls .pagination-info {
         font-size: 0.75rem;
         padding: 0.4rem 0.8rem;
@@ -2036,32 +2036,32 @@ body.dashboard-active .stars {
 }
 
 /* Colores específicos para cada tarjeta */
-.balance-card::before { 
-    background: linear-gradient(135deg, var(--accent-clr), var(--tertiary-color)); 
+.balance-card::before {
+    background: linear-gradient(135deg, var(--accent-clr), var(--tertiary-color));
 }
 
 .balance-card:hover {
     box-shadow: 0 12px 35px rgba(99, 102, 241, 0.3);
 }
 
-.income-card::before { 
-    background: var(--success-color); 
+.income-card::before {
+    background: var(--success-color);
 }
 
 .income-card:hover {
     box-shadow: 0 12px 35px rgba(16, 185, 129, 0.3);
 }
 
-.expense-card::before { 
-    background: var(--error-color); 
+.expense-card::before {
+    background: var(--error-color);
 }
 
 .expense-card:hover {
     box-shadow: 0 12px 35px rgba(239, 68, 68, 0.3);
 }
 
-.transactions-card::before { 
-    background: var(--warning-color); 
+.transactions-card::before {
+    background: var(--warning-color);
 }
 
 .transactions-card:hover {
@@ -2392,44 +2392,44 @@ body.dashboard-active .stars {
         align-items: stretch;
         padding: 1rem;
     }
-    
+
     .period-selector-container select {
         width: 100%;
         min-width: auto;
     }
-    
+
     .period-selector-container .btn-secondary {
         width: 100%;
         justify-content: center;
     }
-    
+
     .charts-section.two-columns {
         grid-template-columns: 1fr;
     }
-    
+
     .chart-container {
         padding: 1.5rem;
     }
-    
+
     .chart-header {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .chart-controls {
         width: 100%;
         justify-content: space-between;
     }
-    
+
     .chart-controls select {
         flex: 1;
         min-width: auto;
     }
-    
+
     .chart-container canvas {
         max-height: 280px;
     }
-    
+
     .chart-header h3 {
         font-size: 1.1rem;
     }
@@ -2439,22 +2439,22 @@ body.dashboard-active .stars {
     .chart-container {
         padding: 1rem;
     }
-    
+
     .chart-header h3 {
         font-size: 1rem;
     }
-    
+
     .chart-controls select {
         font-size: 0.85rem;
         padding: 0.5rem 0.75rem;
     }
-    
+
     .btn-refresh {
         width: 36px;
         height: 36px;
         font-size: 0.9rem;
     }
-    
+
     .chart-container canvas {
         max-height: 250px;
     }
@@ -2585,7 +2585,7 @@ body.dashboard-active .stars {
         max-width: 100%;
         padding: 1.5rem 0;
     }
-    
+
     #categoryDoughnutChart {
         max-height: 300px !important;
     }
@@ -2595,7 +2595,7 @@ body.dashboard-active .stars {
     #doughnut-chart-wrapper {
         padding: 1rem 0;
     }
-    
+
     #categoryDoughnutChart {
         max-height: 250px !important;
     }
