@@ -1,14 +1,18 @@
-#from app import create_app
+from app import create_app
 from dotenv import load_dotenv
 import os
 
 # Cargar variables de entorno
 load_dotenv()
 
+# Crear la aplicación
 app = create_app()
 
+# Vercel necesita que la aplicación esté disponible en el nivel del módulo
+# No uses if __name__ == '__main__' para Vercel
+
 if __name__ == '__main__':
-    # Obtener configuración desde variables de entorno
+    # Solo para desarrollo local
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
     port = int(os.getenv('FLASK_PORT', 5000))
     
@@ -17,9 +21,3 @@ if __name__ == '__main__':
         host='127.0.0.1',
         port=port
     )
-from app import create_app
-
-app = create_app()
-
-if __name__ == '__main__':
-    app.run(debug=False)

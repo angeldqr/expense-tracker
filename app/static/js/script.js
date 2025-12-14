@@ -4,7 +4,10 @@
     // =================================================================
     // MÓDULO INTERNO DE API Y AUTENTICACIÓN
     // =================================================================
-    const BASE_URL = 'http://127.0.0.1:5000';
+    // Usar URL dinámica para que funcione en desarrollo y producción
+    const BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? 'http://127.0.0.1:5000' 
+        : window.location.origin;
     const TOKEN_KEY = 'access_token';
 
     const saveToken = (token) => localStorage.setItem(TOKEN_KEY, token);
@@ -1653,6 +1656,43 @@
 
         if (registerForm) registerForm.addEventListener('submit', handleAuthFormSubmit);
         if (loginForm) loginForm.addEventListener('submit', handleAuthFormSubmit);
+        
+        // Handler para el modo demo
+        const handleDemoMode = async () => {
+            const demoButtons = document.querySelectorAll('#demoModeBtn, #demoModeBtn2, #demoModeBtn3');
+            demoButtons.forEach(btn => {
+                if (btn) btn.classList.add('loading');
+            });
+            
+            try {
+                const response = await fetch(`${BASE_URL}/demo/access`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await handleResponse(response);
+                
+                if (data.access_token) {
+                    saveToken(data.access_token);
+                    showNotification(data.message || '¡Bienvenido al modo demo!', 'success');
+                    setTimeout(showDashboard, 1000);
+                } else {
+                    throw new Error('No se pudo acceder al modo demo');
+                }
+            } catch (error) {
+                showNotification(error.message || 'Error al acceder al modo demo', 'error');
+            } finally {
+                demoButtons.forEach(btn => {
+                    if (btn) btn.classList.remove('loading');
+                });
+            }
+        };
+        
+        // Event listeners para botones de demo
+        const demoBtns = document.querySelectorAll('#demoModeBtn, #demoModeBtn2, #demoModeBtn3');
+        demoBtns.forEach(btn => {
+            if (btn) btn.addEventListener('click', handleDemoMode);
+        });
         
         const openModal = (modal) => { if (modal) modal.classList.add('show'); };
         const closeModal = (modal) => { if (modal) modal.classList.remove('show'); };

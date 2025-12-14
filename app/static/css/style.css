@@ -230,6 +230,49 @@ button.hidden:hover {
     border-color: var(--text-clr);
 }
 
+/* Demo mode button styles */
+.demo-btn {
+    background: linear-gradient(135deg, var(--tertiary-color), var(--accent-clr));
+    margin-top: 15px;
+    font-size: 0.85rem;
+    padding: 14px 35px;
+    box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.demo-btn i {
+    font-size: 1rem;
+}
+
+.demo-btn:hover {
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+    box-shadow: 0 12px 25px rgba(139, 92, 246, 0.4);
+    transform: translateY(-3px);
+}
+
+.demo-btn.loading {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.demo-toggle {
+    margin-top: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(139, 92, 246, 0.5);
+    padding: 12px 30px;
+    font-size: 0.8rem;
+}
+
+.demo-toggle:hover {
+    background: linear-gradient(135deg, var(--tertiary-color), var(--accent-clr));
+    border-color: transparent;
+    box-shadow: 0 10px 20px rgba(139, 92, 246, 0.3);
+}
+
 form {
     background-color: transparent;
     display: flex;
