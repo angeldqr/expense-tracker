@@ -15,7 +15,7 @@ transactions_bp = Blueprint('transactions', __name__, url_prefix='/transactions'
 @jwt_required()
 def get_transactions():
     """Obtiene una lista de todas las transacciones del usuario logueado."""
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     
     # Carga las transacciones con su categoría asociada
     user_transactions = Transaction.query.filter_by(user_id=current_user_id).options(

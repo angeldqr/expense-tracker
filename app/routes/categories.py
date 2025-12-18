@@ -13,7 +13,7 @@ categories_bp = Blueprint('categories', __name__, url_prefix='/categories')
 @jwt_required()
 def get_categories():
     """Obtiene una lista de todas las categorías del usuario logueado."""
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     categories = Category.query.filter_by(user_id=current_user_id).order_by(Category.name).all()
     
     result = [{'id': cat.id, 'name': cat.name} for cat in categories]
@@ -23,7 +23,7 @@ def get_categories():
 @jwt_required()
 def create_category():
     """Crea una nueva categoría para el usuario logueado."""
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     data = request.get_json()
     if not data or not data.get('name'):
         return jsonify({"error": "Falta el nombre de la categoría"}), 400
@@ -52,7 +52,7 @@ def create_category():
 @jwt_required()
 def update_category(category_id):
     """Actualiza el nombre de una categoría existente."""
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     category = Category.query.filter_by(id=category_id, user_id=current_user_id).first()
     
     if not category:
@@ -80,7 +80,7 @@ def update_category(category_id):
 @jwt_required()
 def delete_category(category_id):
     """Elimina una categoría existente."""
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     category = Category.query.filter_by(id=category_id, user_id=current_user_id).first()
 
     if not category:
